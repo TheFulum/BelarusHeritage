@@ -1,0 +1,138 @@
+{
+    "siteName": "Спадчына культуры Беларусі",
+    "navigation": {
+        "home": "Галоўная",
+        "catalog": "Каталог",
+        "map": "Мапа",
+        "timeline": "Храналогія",
+        "quizzes": "Віктарыны",
+        "ornament": "Арнамент",
+        "profile": "Профіль",
+        "admin": "Адмінка"
+    },
+    "hero": {
+        "title": "Спадчына культуры Беларусі",
+        "subtitle": "Даследуйце старажытныя замкі, цэрквы, сядзібы і унікальныя помнікі архітэктуры нашай краіны"
+    },
+    "stats": {
+        "objects": "Аб'ектаў",
+        "regions": "Рэгіёнаў",
+        "photos": "Фатаграфій",
+        "users": "Карыстальнікаў"
+    },
+    "catalog": {
+        "title": "Каталог аб'ектаў",
+        "filters": "Фільтры",
+        "sortBy": "Сартаванне",
+        "sortName": "Па назве",
+        "sortRating": "Па рэйтынгу",
+        "sortDate": "Па даце",
+        "sortCentury": "Па стагоддзі",
+        "resetFilters": "Скінуць фільтры",
+        "noResults": "Аб'екты не знойдзены",
+        "found": "Знойдзена",
+        "objects": "аб'ектаў"
+    },
+    "object": {
+        "details": "Падрабязнасці",
+        "rating": "Рэйтынг",
+        "reviews": "водгукаў",
+        "addToFavorites": "У выбранае",
+        "removeFromFavorites": "З выбранага",
+        "addToRoute": "У маршрут",
+        "showOnMap": "Паказаць на мапе",
+        "reportError": "Паведаміць пра памылку",
+        "relatedObjects": "Звязаныя аб'екты",
+        "nearbyObjects": "Найбліжэйшыя аб'екты",
+        "comments": "Каментарыі",
+        "addComment": "Дадаць каментар",
+        "commentSuccess": "Каментар адпраўлены на мадэрацыю"
+    },
+    "map": {
+        "title": "Інтэрактыўная мапа",
+        "allObjects": "Усе аб'екты",
+        "onlyVisitable": "Толькі наведвальныя",
+        "myLocation": "Маё месцазнаходжанне",
+        "cluster": "Аб'ектаў у кластары"
+    },
+    "timeline": {
+        "title": "Храналогія",
+        "subtitle": "Ключавыя падзеі ў гісторыі Беларусі",
+        "todayInHistory": "Сёння ў гісторыі"
+    },
+    "quiz": {
+        "title": "Віктарыны",
+        "play": "Прайсці",
+        "result": "Вынік",
+        "correct": "Правільна",
+        "attempts": " спроб",
+        "playAgain": "Прайсці зноў",
+        "types": {
+            "imageGuess": "Угадай аб'ект",
+            "regionGuess": "Угадай рэгіён",
+            "dragDrop": "Збяры",
+            "centuryGuess": "Угадай стагоддзе",
+            "oddOneOut": "Знайдзі лішняе"
+        }
+    },
+    "routeBuilder": {
+        "title": "Канструктар маршруту",
+        "createRoute": "Стварыць маршрут",
+        "addStop": "Дадаць спынак",
+        "removeStop": "Выдаліць",
+        "totalDistance": "Агульная адлегласць",
+        "km": "км"
+    },
+    "ornament": {
+        "title": "Канструктар арнаменту",
+        "pieces": "Кавалкі",
+        "brush": "Пэндзаль",
+        "clear": "Ачысціць",
+        "undo": "Скасаваць",
+        "save": "Захаваць",
+        "download": "Спампаваць PNG"
+    },
+    "auth": {
+        "login": "Увайсці",
+        "logout": "Выйсці",
+        "register": "Рэгістрацыя",
+        "email": "Email",
+        "password": "Пароль",
+        "rememberMe": "Запамінаць мяне",
+        "forgotPassword": "Забылі пароль?",
+        "noAccount": "Няма акаунта?",
+        "hasAccount": "Ужо ёсць акаунт?"
+    },
+    "profile": {
+        "title": "Профіль",
+        "favorites": "Выбранае",
+        "comments": "Мае каментарыі",
+        "ratings": "Мае адзнакі",
+        "routes": "Мае маршруты",
+        "ornaments": "Мае арнаменты",
+        "quizHistory": "Гісторыя віктарын"
+    },
+    "admin": {
+        "dashboard": "Панель кіравання",
+        "objects": "Аб'екты",
+        "trash": "Кошык",
+        "users": "Карыстальнікі",
+        "comments": "Каментарыі",
+        "quizzes": "Віктарыны",
+        "timeline": "Храналогія",
+        "catalogData": "Даведнікі",
+        "auditLog": "Журнал дзеянняў"
+    },
+    "common": {
+        "save": "Захаваць",
+        "cancel": "Скасаваць",
+        "delete": "Выдаліць",
+        "edit": "Рэдагаваць",
+        "create": "Стварыць",
+        "search": "Пошук",
+        "loading": "Загрузка...",
+        "error": "Памылка",
+        "success": "Поспех",
+        "confirm": "Пацвердзіць"
+    }
+}

@@ -1,0 +1,41 @@
+@model BelarusHeritage.Models.Domain.HeritageObject
+@{
+    var lang = BelarusHeritage.Localization.UiText.Lang(Context);
+    var name = lang == "en" ? Model.NameEn : lang == "be" ? Model.NameBe : Model.NameRu;
+    var regionName = Model.Region == null ? "" :
+        (lang == "en" ? Model.Region.NameEn : lang == "be" ? Model.Region.NameBe : Model.Region.NameRu);
+    var thumb = Model.Images?.FirstOrDefault(i => i.IsMain)?.ThumbUrl
+                ?? Model.Images?.FirstOrDefault(i => i.IsMain)?.Url
+                ?? Model.MainImageUrl;
+}
+
+<a href="@Url.Action("Detail", "Object", new { slug = Model.Slug })" class="related-card">
+    <div class="related-card-img">
+        @if (!string.IsNullOrEmpty(thumb))
+        {
+            <img src="@thumb" alt="@name" loading="lazy">
+        }
+        else
+        {
+            <div class="related-card-placeholder">
+                <i class="bi bi-building"></i>
+            </div>
+        }
+
+        @if (Model.Category != null)
+        {
+            <span class="related-card-cat" style="background-color:@Model.Category.ColorHex">
+                <i class="@Model.Category.IconClass"></i>
+            </span>
+        }
+    </div>
+    <div class="related-card-body">
+        <div class="related-card-name">@name</div>
+        @if (!string.IsNullOrEmpty(regionName))
+        {
+            <div class="related-card-meta">
+                <i class="bi bi-geo-alt"></i> @regionName
+            </div>
+        }
+    </div>
+</a>

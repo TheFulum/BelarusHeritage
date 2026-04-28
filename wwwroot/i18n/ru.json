@@ -1,0 +1,138 @@
+{
+    "siteName": "Культурное наследие Беларуси",
+    "navigation": {
+        "home": "Главная",
+        "catalog": "Каталог",
+        "map": "Карта",
+        "timeline": "Таймлайн",
+        "quizzes": "Квизы",
+        "ornament": "Орнамент",
+        "profile": "Личный кабинет",
+        "admin": "Админка"
+    },
+    "hero": {
+        "title": "Культурное наследие Беларуси",
+        "subtitle": "Исследуйте древние замки, churches, усадьбы и уникальные памятники архитектуры нашей страны"
+    },
+    "stats": {
+        "objects": "Объектов",
+        "regions": "Регионов",
+        "photos": "Фотографий",
+        "users": "Пользователей"
+    },
+    "catalog": {
+        "title": "Каталог объектов",
+        "filters": "Фильтры",
+        "sortBy": "Сортировка",
+        "sortName": "По названию",
+        "sortRating": "По рейтингу",
+        "sortDate": "По дате",
+        "sortCentury": "По веку",
+        "resetFilters": "Сбросить фильтры",
+        "noResults": "Объекты не найдены",
+        "found": "Найдено",
+        "objects": "объектов"
+    },
+    "object": {
+        "details": "Подробнее",
+        "rating": "Рейтинг",
+        "reviews": "отзывов",
+        "addToFavorites": "В избранное",
+        "removeFromFavorites": "Из избранного",
+        "addToRoute": "В маршрут",
+        "showOnMap": "Показать на карте",
+        "reportError": "Сообщить об ошибке",
+        "relatedObjects": "Связанные объекты",
+        "nearbyObjects": "Ближайшие объекты",
+        "comments": "Комментарии",
+        "addComment": "Добавить комментарий",
+        "commentSuccess": "Комментарий отправлен на модерацию"
+    },
+    "map": {
+        "title": "Интерактивная карта",
+        "allObjects": "Все объекты",
+        "onlyVisitable": "Только посещаемые",
+        "myLocation": "Моё местоположение",
+        "cluster": "Объектов в кластере"
+    },
+    "timeline": {
+        "title": "Таймлайн",
+        "subtitle": "Ключевые события в истории Беларуси",
+        "todayInHistory": "Сегодня в истории"
+    },
+    "quiz": {
+        "title": "Квизы",
+        "play": "Пройти",
+        "result": "Результат",
+        "correct": "Правильно",
+        "attempts": " попыток",
+        "playAgain": "Пройти снова",
+        "types": {
+            "imageGuess": "Угадай объект",
+            "regionGuess": "Угадай регион",
+            "dragDrop": "Собери",
+            "centuryGuess": "Угадай век",
+            "oddOneOut": "Найди лишнее"
+        }
+    },
+    "routeBuilder": {
+        "title": "Конструктор маршрута",
+        "createRoute": "Создать маршрут",
+        "addStop": "Добавить остановку",
+        "removeStop": "Удалить",
+        "totalDistance": "Общее расстояние",
+        "km": "км"
+    },
+    "ornament": {
+        "title": "Конструктор орнамента",
+        "pieces": "Кусочки",
+        "brush": "Кисть",
+        "clear": "Очистить",
+        "undo": "Отменить",
+        "save": "Сохранить",
+        "download": "Скачать PNG"
+    },
+    "auth": {
+        "login": "Войти",
+        "logout": "Выйти",
+        "register": "Регистрация",
+        "email": "Email",
+        "password": "Пароль",
+        "rememberMe": "Запомнить меня",
+        "forgotPassword": "Забыли пароль?",
+        "noAccount": "Нет аккаунта?",
+        "hasAccount": "Уже есть аккаунт?"
+    },
+    "profile": {
+        "title": "Личный кабинет",
+        "favorites": "Избранное",
+        "comments": "Мои комментарии",
+        "ratings": "Мои оценки",
+        "routes": "Мои маршруты",
+        "ornaments": "Мои орнаменты",
+        "quizHistory": "История квизов"
+    },
+    "admin": {
+        "dashboard": "Панель управления",
+        "objects": "Объекты",
+        "trash": "Корзина",
+        "users": "Пользователи",
+        "comments": "Комментарии",
+        "quizzes": "Квизы",
+        "timeline": "Таймлайн",
+        "catalogData": "Справочники",
+        "auditLog": "Журнал действий"
+    },
+    "common": {
+        "save": "Сохранить",
+        "cancel": "Отмена",
+        "delete": "Удалить",
+        "edit": "Редактировать",
+        "create": "Создать",
+        "search": "Поиск",
+        "loading": "Загрузка...",
+        "error": "Ошибка",
+        "success": "Успешно",
+        "confirm": "Подтвердить"
+    }
+}

@@ -1,0 +1,348 @@
+@model BelarusHeritage.Models.Domain.Quiz
+@{
+    ViewData["Title"] = Model.TitleRu;
+    var lang = Context.Request.Cookies["culture"] ?? "ru";
+    string Lz(string key) => BelarusHeritage.Localization.UiText.T(Context, $"quiz.play.{key}");
+    string TitleOf() => lang == "en" ? Model.TitleEn : lang == "be" ? Model.TitleBe : Model.TitleRu;
+
+    // Serialize quiz data for JS (correct answers included for client-side check)
+    var quizJson = System.Text.Json.JsonSerializer.Serialize(new {
+        id        = Model.Id,
+        title     = TitleOf(),
+        timeLimit = Model.TimeLimit ?? 0,
+        questions = Model.Questions.OrderBy(q => q.SortOrder).Select(q => new {
+            id      = q.Id,
+            bodyRu  = q.BodyRu,
+            bodyBe  = q.BodyBe,
+            bodyEn  = q.BodyEn,
+            imageUrl= q.ImageUrl,
+            answers = q.Answers.OrderBy(a => a.SortOrder).Select(a => new {
+                id        = a.Id,
+                bodyRu    = a.BodyRu,
+                bodyBe    = a.BodyBe,
+                bodyEn    = a.BodyEn,
+                isCorrect = a.IsCorrect
+            })
+        })
+    });
+}
+
+@section Styles {
+<style>
+    .qplay-wrap {
+        min-height: calc(100vh - var(--header-total-height));
+        display: flex; flex-direction: column;
+        background: #f7f3ee;
+    }
+
+    /* Progress bar */
+    .qplay-progress { height: 4px; background: #e5e9f0; flex-shrink: 0; }
+    .qplay-progress-bar { height: 100%; background: linear-gradient(90deg,#8B1A2A,#C68B2A); transition: width .4s ease; }
+
+    /* Header strip */
+    .qplay-header {
+        display: flex; align-items: center; gap: 16px;
+        padding: 14px 24px;
+        background: #fff;
+        border-bottom: 1px solid #e5e9f0;
+        flex-shrink: 0;
+    }
+    .qplay-title { font-weight: 600; font-size: .9rem; color: #1a202c; flex: 1; }
+    .qplay-counter { font-size: .85rem; color: #6b7280; white-space: nowrap; }
+    .qplay-timer {
+        font-size: .85rem; font-weight: 600; color: #8B1A2A;
+        background: #fef2f2; border-radius: 6px;
+        padding: 3px 10px; white-space: nowrap;
+        display: none;
+    }
+
+    /* Main area */
+    .qplay-main { flex: 1; display: flex; align-items: center; justify-content: center; padding: 32px 16px; }
+    .qplay-card {
+        background: #fff; border-radius: 16px;
+        box-shadow: 0 4px 24px rgba(0,0,0,.1);
+        width: 100%; max-width: 620px;
+        overflow: hidden;
+    }
+    .qplay-card-img { width: 100%; height: 260px; object-fit: cover; display: block; }
+    .qplay-card-body { padding: 28px 32px 32px; }
+    .qplay-question-text {
+        font-family: 'Cormorant Garamond', serif;
+        font-size: 1.4rem; font-weight: 600;
+        color: #1a202c; margin-bottom: 24px; line-height: 1.35;
+    }
+
+    /* Answer grid */
+    .qplay-answers { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    @@media (max-width: 480px) { .qplay-answers { grid-template-columns: 1fr; } }
+
+    .qplay-answer {
+        padding: 12px 16px;
+        border: 2px solid #e5e9f0;
+        border-radius: 10px;
+        font-size: .875rem;
+        font-weight: 500;
+        color: #374151;
+        background: #fff;
+        cursor: pointer;
+        transition: border-color .15s, background .15s, color .15s;
+        text-align: left;
+    }
+    .qplay-answer:hover:not(:disabled) { border-color: #8B1A2A; background: #fdf7f7; }
+    .qplay-answer.correct  { border-color: #16a34a; background: #f0fdf4; color: #15803d; }
+    .qplay-answer.wrong    { border-color: #dc2626; background: #fef2f2; color: #dc2626; }
+    .qplay-answer.reveal   { border-color: #16a34a; background: #f0fdf4; color: #15803d; }
+
+    /* Next button */
+    .qplay-next {
+        display: none; width: 100%;
+        margin-top: 20px; padding: 12px;
+        background: #8B1A2A; color: #fff;
+        border: none; border-radius: 10px;
+        font-size: .9rem; font-weight: 600; cursor: pointer;
+        transition: background .2s;
+    }
+    .qplay-next:hover { background: #a52032; }
+
+    /* Result screen */
+    .qplay-result { display: none; text-align: center; padding: 40px 32px; }
+    .qplay-score-ring {
+        width: 140px; height: 140px;
+        border-radius: 50%;
+        background: conic-gradient(#8B1A2A var(--pct), #e5e9f0 0);
+        display: flex; align-items: center; justify-content: center;
+        margin: 0 auto 20px;
+        position: relative;
+    }
+    .qplay-score-ring::before {
+        content: '';
+        position: absolute; inset: 12px;
+        background: #fff; border-radius: 50%;
+    }
+    .qplay-score-num {
+        font-family: 'Cormorant Garamond', serif;
+        font-size: 2.2rem; font-weight: 700;
+        color: #8B1A2A; position: relative; z-index: 1;
+    }
+    .qplay-result-title { font-size: 1.3rem; font-weight: 700; color: #1a202c; margin-bottom: 6px; }
+    .qplay-result-sub { font-size: .88rem; color: #6b7280; margin-bottom: 28px; }
+    .qplay-result-actions { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+</style>
+}
+
+<div class="qplay-wrap">
+    <div class="qplay-progress"><div class="qplay-progress-bar" id="progressBar" style="width:0%"></div></div>
+
+    <div class="qplay-header">
+        <div class="qplay-title" id="quizTitle"></div>
+        <div class="qplay-counter" id="questionCounter"></div>
+        <div class="qplay-timer" id="timerDisplay"><i class="bi bi-clock me-1"></i><span id="timerVal"></span></div>
+    </div>
+
+    <div class="qplay-main">
+        <div class="qplay-card" id="questionCard">
+            <div id="questionImgWrap"></div>
+            <div class="qplay-card-body">
+                <div class="qplay-question-text" id="questionText"></div>
+                <div class="qplay-answers" id="answersGrid"></div>
+                <button class="qplay-next" id="nextBtn" onclick="nextQuestion()"></button>
+            </div>
+        </div>
+
+        <div class="qplay-card" id="resultCard" style="display:none;">
+            <div class="qplay-result" id="resultPanel">
+                <div class="qplay-score-ring" id="scoreRing">
+                    <div class="qplay-score-num" id="scoreNum"></div>
+                </div>
+                <div class="qplay-result-title" id="resultTitle"></div>
+                <div class="qplay-result-sub" id="resultSub"></div>
+                <div class="qplay-result-actions">
+                    <button class="btn btn-danger" onclick="restartQuiz()">
+                        <i class="bi bi-arrow-repeat me-1"></i><span id="lblRetry"></span>
+                    </button>
+                    <a href="/Quiz" class="btn btn-outline-secondary">
+                        <i class="bi bi-grid me-1"></i><span id="lblAllQuizzes"></span>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+const LANG = '@lang';
+const QUIZ_DATA = @Html.Raw(quizJson);
+
+const I18N = {
+    question: '@Lz("question")',
+    of: '@Lz("of")',
+    next: '@Lz("next")',
+    finish: '@Lz("finish")',
+    retry: '@Lz("retry")',
+    allQuizzes: '@Lz("allQuizzes")',
+    correct: '@Lz("correct")',
+    wrong: '@Lz("wrong")',
+    resultExcellent: '@Lz("result.excellent")',
+    resultGood: '@Lz("result.good")',
+    resultKeepLearning: '@Lz("result.keepLearning")',
+    resultSubTpl: '@Lz("result.subTpl")',
+    qBody: q => LANG==='en' ? q.bodyEn : LANG==='be' ? q.bodyBe : q.bodyRu,
+    aBody: a => LANG==='en' ? a.bodyEn : LANG==='be' ? a.bodyBe : a.bodyRu,
+    resultTitle: pct => {
+        if (pct >= 80) return I18N.resultExcellent;
+        if (pct >= 60) return I18N.resultGood;
+        return I18N.resultKeepLearning;
+    }
+};
+
+const questions = Array.from(QUIZ_DATA.questions);
+let currentIdx = 0;
+let correctCount = 0;
+let answered = false;
+let timerInterval = null;
+let timeLeft = QUIZ_DATA.timeLimit > 0 ? QUIZ_DATA.timeLimit : 0;
+let startTime = Date.now();
+
+function qBody(q) { return I18N.qBody(q) || q.bodyRu || ''; }
+function aBody(a) { return I18N.aBody(a) || a.bodyRu || ''; }
+
+function init() {
+    document.getElementById('quizTitle').textContent = QUIZ_DATA.title;
+    document.getElementById('lblRetry').textContent = I18N.retry;
+    document.getElementById('lblAllQuizzes').textContent = I18N.allQuizzes;
+    if (timeLeft > 0) {
+        document.getElementById('timerDisplay').style.display = '';
+        startTimer();
+    }
+    showQuestion(0);
+}
+
+function startTimer() {
+    document.getElementById('timerVal').textContent = formatTime(timeLeft);
+    timerInterval = setInterval(() => {
+        timeLeft--;
+        document.getElementById('timerVal').textContent = formatTime(timeLeft);
+        if (timeLeft <= 0) {
+            clearInterval(timerInterval);
+            if (!answered) skipRemaining();
+        }
+    }, 1000);
+}
+
+function formatTime(s) { return `${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}`; }
+
+function showQuestion(idx) {
+    answered = false;
+    const q = questions[idx];
+    const total = questions.length;
+
+    document.getElementById('progressBar').style.width = `${(idx / total) * 100}%`;
+    document.getElementById('questionCounter').textContent = `${I18N.question} ${idx + 1} ${I18N.of} ${total}`;
+
+    const imgWrap = document.getElementById('questionImgWrap');
+    imgWrap.innerHTML = q.imageUrl
+        ? `<img src="${q.imageUrl}" class="qplay-card-img" alt="" loading="lazy">`
+        : '';
+
+    document.getElementById('questionText').textContent = qBody(q) || `#${idx + 1}`;
+
+    const grid = document.getElementById('answersGrid');
+    grid.innerHTML = '';
+    q.answers.forEach(a => {
+        const btn = document.createElement('button');
+        btn.className = 'qplay-answer';
+        btn.textContent = aBody(a);
+        btn.onclick = () => selectAnswer(btn, a, q);
+        grid.appendChild(btn);
+    });
+
+    const nextBtn = document.getElementById('nextBtn');
+    nextBtn.style.display = 'none';
+    nextBtn.textContent = idx < total - 1 ? I18N.next : I18N.finish;
+}
+
+function selectAnswer(btn, answer, question) {
+    if (answered) return;
+    answered = true;
+
+    const buttons = document.querySelectorAll('.qplay-answer');
+    buttons.forEach(b => { b.disabled = true; });
+
+    if (answer.isCorrect) {
+        btn.classList.add('correct');
+        correctCount++;
+    } else {
+        btn.classList.add('wrong');
+        // reveal correct
+        buttons.forEach(b => {
+            const idx = Array.from(buttons).indexOf(b);
+            if (question.answers[idx]?.isCorrect) b.classList.add('reveal');
+        });
+    }
+
+    document.getElementById('nextBtn').style.display = 'block';
+}
+
+function nextQuestion() {
+    currentIdx++;
+    if (currentIdx < questions.length) {
+        showQuestion(currentIdx);
+    } else {
+        showResult();
+    }
+}
+
+function skipRemaining() {
+    showResult();
+}
+
+function showResult() {
+    clearInterval(timerInterval);
+    const timeSec = Math.round((Date.now() - startTime) / 1000);
+    const total = questions.length;
+    const pct = total > 0 ? Math.round((correctCount / total) * 100) : 0;
+    const score = pct; // score as percentage byte
+
+    document.getElementById('progressBar').style.width = '100%';
+    document.getElementById('questionCard').style.display = 'none';
+    document.getElementById('resultCard').style.display = '';
+    document.getElementById('resultPanel').style.display = 'block';
+
+    document.getElementById('scoreRing').style.setProperty('--pct', `${pct}%`);
+    document.getElementById('scoreNum').textContent = `${pct}%`;
+    document.getElementById('resultTitle').textContent = I18N.resultTitle(pct);
+    const subText = I18N.resultSubTpl
+        .replace('{0}', String(correctCount))
+        .replace('{1}', String(total));
+    document.getElementById('resultSub').textContent = subText;
+
+    // Save result
+    fetch('/Quiz/SubmitResult', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({
+            quizId: QUIZ_DATA.id,
+            score: Math.min(score, 255),
+            correctCount: Math.min(correctCount, 255),
+            totalCount: Math.min(total, 255),
+            timeSpentSec: timeSec
+        })
+    }).catch(() => {});
+}
+
+function restartQuiz() {
+    currentIdx = 0; correctCount = 0; answered = false;
+    timeLeft = QUIZ_DATA.timeLimit > 0 ? QUIZ_DATA.timeLimit : 0;
+    startTime = Date.now();
+    clearInterval(timerInterval);
+    document.getElementById('questionCard').style.display = '';
+    document.getElementById('resultCard').style.display = 'none';
+    document.getElementById('resultPanel').style.display = 'none';
+    if (timeLeft > 0) startTimer();
+    showQuestion(0);
+}
+
+init();
+</script>
+}

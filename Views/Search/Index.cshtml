@@ -1,0 +1,306 @@
+@model List<BelarusHeritage.Models.Domain.HeritageObject>
+@using BelarusHeritage.Models.Domain
+@{
+    var lang = BelarusHeritage.Localization.UiText.Lang(Context);
+    ViewData["Title"] = BelarusHeritage.Localization.UiText.T(Context, "search.title");
+    var q = (string?)ViewBag.Query ?? "";
+    var activeCategory = (string?)ViewBag.Category ?? "";
+    var activeRegion = (string?)ViewBag.Region ?? "";
+    var totalCount = (int)(ViewBag.TotalCount ?? 0);
+    var currentPage = (int)(ViewBag.CurrentPage ?? 1);
+    var totalPages = (int)(ViewBag.TotalPages ?? 1);
+    var categories = (List<Category>)(ViewBag.Categories ?? new List<Category>());
+    var regions = (List<Region>)(ViewBag.Regions ?? new List<Region>());
+
+    string NameOf(string ru, string be, string en) => lang == "en" ? en : lang == "be" ? be : ru;
+
+    string PluralObjects(int n)
+    {
+        var mod10 = n % 10;
+        var mod100 = n % 100;
+        if (mod100 >= 11 && mod100 <= 14) return BelarusHeritage.Localization.UiText.T(Context, "search.objects.many");
+        return mod10 switch {
+            1 => BelarusHeritage.Localization.UiText.T(Context, "search.objects.one"),
+            2 or 3 or 4 => BelarusHeritage.Localization.UiText.T(Context, "search.objects.few"),
+            _ => BelarusHeritage.Localization.UiText.T(Context, "search.objects.many")
+        };
+    }
+}
+
+@section Styles {
+<style>
+    /* ── Header ── */
+    .search-header {
+        background: linear-gradient(135deg, #1a1a2e 0%, #2d1b33 50%, #8B1A2A 100%);
+        padding: 44px 0 36px;
+        position: relative;
+        overflow: hidden;
+    }
+    .search-header::before {
+        content: '';
+        position: absolute; inset: 0;
+        background: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.03'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+    }
+    .search-hero-label {
+        font-size: .8rem;
+        font-weight: 500;
+        letter-spacing: .1em;
+        text-transform: uppercase;
+        color: rgba(255,255,255,.5);
+        margin-bottom: 8px;
+    }
+    .search-hero-title {
+        font-family: 'Cormorant Garamond', serif;
+        font-size: clamp(1.6rem, 4vw, 2.8rem);
+        font-weight: 700;
+        color: #fff;
+        margin-bottom: 4px;
+        word-break: break-word;
+    }
+    .search-hero-query { color: #C68B2A; }
+    .search-hero-count {
+        font-size: .9rem;
+        color: rgba(255,255,255,.6);
+    }
+    .search-hero-count strong { color: rgba(255,255,255,.9); }
+
+    /* ── Search form ── */
+    .search-form-wrap {
+        margin-top: 20px;
+        max-width: 560px;
+    }
+    .search-form-wrap .input-group .form-control {
+        border-radius: 8px 0 0 8px;
+        border-color: rgba(255,255,255,.3);
+        background: rgba(255,255,255,.12);
+        color: #fff;
+    }
+    .search-form-wrap .input-group .form-control::placeholder { color: rgba(255,255,255,.5); }
+    .search-form-wrap .input-group .form-control:focus {
+        background: rgba(255,255,255,.18);
+        border-color: rgba(255,255,255,.5);
+        box-shadow: none;
+        color: #fff;
+    }
+    .search-form-wrap .btn-search {
+        background: #C68B2A;
+        border-color: #C68B2A;
+        color: #fff;
+        border-radius: 0 8px 8px 0;
+        padding: 0 20px;
+    }
+    .search-form-wrap .btn-search:hover { background: #a6731f; border-color: #a6731f; }
+
+    /* ── Filters bar ── */
+    .search-filters {
+        background: #fff;
+        border-bottom: 1px solid #E0D8CC;
+        padding: 12px 0;
+        position: sticky;
+        top: 0;
+        z-index: 100;
+        box-shadow: 0 2px 8px rgba(0,0,0,.05);
+    }
+    .search-filters .form-select {
+        font-size: .85rem;
+        max-width: 200px;
+    }
+    .filter-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        background: #F9F4EB;
+        border: 1px solid #E0D8CC;
+        border-radius: 20px;
+        padding: 3px 10px 3px 12px;
+        font-size: .78rem;
+        color: #1A1A1A;
+        text-decoration: none;
+    }
+    .filter-chip .chip-x {
+        width: 16px; height: 16px;
+        background: #6B6B6B;
+        border-radius: 50%;
+        display: flex; align-items: center; justify-content: center;
+        color: #fff;
+        font-size: .6rem;
+        flex-shrink: 0;
+        line-height: 1;
+    }
+
+    /* ── Results ── */
+    .search-results { padding: 36px 0 60px; }
+
+    /* reuse catalog-grid from site.css */
+    .search-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+        gap: 24px;
+    }
+
+    /* ── Empty state ── */
+    .search-empty {
+        text-align: center;
+        padding: 80px 20px;
+    }
+    .search-empty-icon { font-size: 3rem; color: #C68B2A; margin-bottom: 16px; display: block; }
+    .search-empty h3 {
+        font-family: 'Cormorant Garamond', serif;
+        font-size: 1.6rem;
+        color: #1A1A1A;
+        margin-bottom: 10px;
+    }
+    .search-empty p { color: #6B6B6B; max-width: 400px; margin: 0 auto; }
+    .search-tips { margin-top: 24px; text-align: left; max-width: 320px; margin-left: auto; margin-right: auto; }
+    .search-tips li { font-size: .88rem; color: #6B6B6B; margin-bottom: 4px; }
+
+    /* ── Pagination ── */
+    .search-pager { padding: 8px 0 20px; }
+    .page-link { color: #8B1A2A; }
+    .page-item.active .page-link { background: #8B1A2A; border-color: #8B1A2A; color: #fff; }
+    .page-link:hover { color: #6a1420; }
+
+    /* Breadcrumbs */
+    .breadcrumbs { font-size: .82rem; color: #6B6B6B; margin-bottom: 0; }
+    .breadcrumbs a { color: rgba(255,255,255,.6); text-decoration: none; }
+    .breadcrumbs a:hover { color: #fff; }
+    .breadcrumbs .sep { margin: 0 6px; color: rgba(255,255,255,.3); }
+    .breadcrumbs .current { color: rgba(255,255,255,.9); }
+</style>
+}
+
+<!-- Header / Hero -->
+<div class="search-header">
+    <div class="container">
+        <div class="breadcrumbs mb-2">
+            <a href="@Url.Action("Index", "Home")">@BelarusHeritage.Localization.UiText.T(Context, "nav.home")</a>
+            <span class="sep">/</span>
+            <span class="current">@BelarusHeritage.Localization.UiText.T(Context, "search.title")</span>
+        </div>
+        <div class="search-hero-label">@BelarusHeritage.Localization.UiText.T(Context, "search.resultsFor")</div>
+        <h1 class="search-hero-title">
+            «<span class="search-hero-query">@q</span>»
+        </h1>
+        <p class="search-hero-count">
+            @BelarusHeritage.Localization.UiText.T(Context, "search.found") <strong>@totalCount</strong> @PluralObjects(totalCount)
+        </p>
+
+        <!-- Re-search form -->
+        <div class="search-form-wrap">
+            <form method="get" action="@Url.RouteUrl("SearchPretty")">
+                <div class="input-group">
+                    <input type="text" name="q" class="form-control" value="@q"
+                           placeholder="@BelarusHeritage.Localization.UiText.T(Context, "search.placeholder")">
+                    <input type="hidden" name="category" value="@activeCategory">
+                    <input type="hidden" name="region" value="@activeRegion">
+                    <button class="btn btn-search" type="submit">
+                        <i class="bi bi-search"></i>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Filters bar -->
+<div class="search-filters">
+    <div class="container">
+        <form method="get" action="@Url.RouteUrl("SearchPretty")" class="d-flex flex-wrap gap-2 align-items-center">
+            <input type="hidden" name="q" value="@q">
+            <input type="hidden" name="page" value="1">
+
+            <select name="category" class="form-select" onchange="this.form.submit()">
+                <option value="">@BelarusHeritage.Localization.UiText.T(Context, "search.filter.allCategories")</option>
+                @foreach (var c in categories)
+                {
+                    <option value="@c.Slug" selected="@(activeCategory == c.Slug ? "selected" : null)">
+                        @NameOf(c.NameRu, c.NameBe, c.NameEn)
+                    </option>
+                }
+            </select>
+
+            <select name="region" class="form-select" onchange="this.form.submit()">
+                <option value="">@BelarusHeritage.Localization.UiText.T(Context, "search.filter.allRegions")</option>
+                @foreach (var r in regions)
+                {
+                    <option value="@r.Code" selected="@(activeRegion == r.Code ? "selected" : null)">
+                        @NameOf(r.NameRu, r.NameBe, r.NameEn)
+                    </option>
+                }
+            </select>
+
+            <!-- Active filter chips -->
+            @if (!string.IsNullOrEmpty(activeCategory))
+            {
+                var catName = categories.FirstOrDefault(c => c.Slug == activeCategory);
+                if (catName != null)
+                {
+                    <a class="filter-chip" href="@Url.RouteUrl("SearchPretty", new { q, region = activeRegion })">
+                        @NameOf(catName.NameRu, catName.NameBe, catName.NameEn)
+                        <span class="chip-x">×</span>
+                    </a>
+                }
+            }
+            @if (!string.IsNullOrEmpty(activeRegion))
+            {
+                var regName = regions.FirstOrDefault(r => r.Code == activeRegion);
+                if (regName != null)
+                {
+                    <a class="filter-chip" href="@Url.RouteUrl("SearchPretty", new { q, category = activeCategory })">
+                        @NameOf(regName.NameRu, regName.NameBe, regName.NameEn)
+                        <span class="chip-x">×</span>
+                    </a>
+                }
+            }
+        </form>
+    </div>
+</div>
+
+<!-- Results -->
+<div class="search-results">
+    <div class="container">
+        @if (!Model.Any())
+        {
+            <div class="search-empty" data-aos="fade-up">
+                <i class="bi bi-search search-empty-icon"></i>
+                <h3>@BelarusHeritage.Localization.UiText.T(Context, "search.empty.title")</h3>
+                <p>@string.Format(BelarusHeritage.Localization.UiText.T(Context, "search.empty.text"), q)</p>
+                <ul class="search-tips">
+                    <li>@BelarusHeritage.Localization.UiText.T(Context, "search.tip.1")</li>
+                    <li>@BelarusHeritage.Localization.UiText.T(Context, "search.tip.2")</li>
+                    <li>@BelarusHeritage.Localization.UiText.T(Context, "search.tip.3")</li>
+                </ul>
+            </div>
+        }
+        else
+        {
+            <div class="search-grid">
+                @foreach (var item in Model)
+                {
+                    <partial name="_ObjectCard" model="@item" />
+                }
+            </div>
+
+            <!-- Pagination -->
+            @if (totalPages > 1)
+            {
+                <nav class="search-pager d-flex justify-content-center mt-4" aria-label="@BelarusHeritage.Localization.UiText.T(Context, "search.pagination")">
+                    <ul class="pagination">
+                        <li class="page-item @(currentPage == 1 ? "disabled" : "")">
+                            <a class="page-link" href="@Url.RouteUrl("SearchPretty", new { q, category = activeCategory, region = activeRegion, page = currentPage - 1 })">&laquo;</a>
+                        </li>
+                        @for (var p = Math.Max(1, currentPage - 2); p <= Math.Min(totalPages, currentPage + 2); p++)
+                        {
+                            <li class="page-item @(p == currentPage ? "active" : "")">
+                                <a class="page-link" href="@Url.RouteUrl("SearchPretty", new { q, category = activeCategory, region = activeRegion, page = p })">@p</a>
+                            </li>
+                        }
+                        <li class="page-item @(currentPage == totalPages ? "disabled" : "")">
+                            <a class="page-link" href="@Url.RouteUrl("SearchPretty", new { q, category = activeCategory, region = activeRegion, page = currentPage + 1 })">&raquo;</a>
+                        </li>
+                    </ul>
+                </nav>
+            }
+        }
+    </div>
+</div>

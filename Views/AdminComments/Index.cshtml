@@ -1,0 +1,182 @@
+@model BelarusHeritage.Models.ViewModels.AdminCommentsViewModel
+@{
+    Layout = "_AdminLayout";
+    Func<string, string> L = key => BelarusHeritage.Localization.UiText.T(Context, $"admin.comments.index.{key}");
+    ViewData["Title"] = L("title");
+
+    string StatusBadge(BelarusHeritage.Models.Domain.CommentStatus s) => s switch {
+        BelarusHeritage.Models.Domain.CommentStatus.Approved => "bg-success",
+        BelarusHeritage.Models.Domain.CommentStatus.Rejected => "bg-secondary",
+        BelarusHeritage.Models.Domain.CommentStatus.Spam     => "bg-danger",
+        _                                                    => "bg-warning text-dark"
+    };
+    string StatusLabel(BelarusHeritage.Models.Domain.CommentStatus s) => s switch {
+        BelarusHeritage.Models.Domain.CommentStatus.Approved => L("status.approved"),
+        BelarusHeritage.Models.Domain.CommentStatus.Rejected => L("status.rejected"),
+        BelarusHeritage.Models.Domain.CommentStatus.Spam     => L("status.spam"),
+        _                                                    => L("status.pending")
+    };
+}
+
+<div class="admin-page-header">
+    <h1 class="admin-page-title">@L("title")</h1>
+    <div class="admin-page-breadcrumb">
+        <a href="/AdminDashboard">@BelarusHeritage.Localization.UiText.T(Context, "admin.nav.dashboard")</a>
+        <span class="sep">/</span>
+        <span>@L("title")</span>
+    </div>
+</div>
+
+<!-- Filters -->
+<form method="get" class="admin-card mb-3">
+    <div class="admin-card-body py-3">
+        <div class="row g-2 align-items-end">
+            <div class="col-md-3">
+                <select name="status" class="form-select form-select-sm">
+                    <option value="">@L("filter.allStatuses")</option>
+                    <option value="Pending" selected="@(Model.Status=="Pending"?"selected":null)">@L("status.pending")</option>
+                    <option value="Approved" selected="@(Model.Status=="Approved"?"selected":null)">@L("filter.approved")</option>
+                    <option value="Rejected" selected="@(Model.Status=="Rejected"?"selected":null)">@L("filter.rejected")</option>
+                    <option value="Spam" selected="@(Model.Status=="Spam"?"selected":null)">@L("status.spam")</option>
+                </select>
+            </div>
+            <div class="col-auto d-flex gap-2">
+                <button type="submit" class="btn btn-sm btn-secondary">@L("btn.apply")</button>
+                <a href="/AdminComments" class="btn btn-sm btn-outline-secondary">@L("btn.reset")</a>
+            </div>
+        </div>
+    </div>
+</form>
+
+<div class="d-flex align-items-center justify-content-between mb-2">
+    <div class="text-muted" style="font-size:.82rem;">@L("found"): <strong>@Model.TotalCount</strong></div>
+    <div class="d-flex gap-2" id="massPanel" style="display:none;">
+        <button class="btn btn-sm btn-outline-success" onclick="massAction('approve')">
+            <i class="bi bi-check2 me-1"></i>@L("btn.approve")
+        </button>
+        <button class="btn btn-sm btn-outline-danger" onclick="massAction('delete')">
+            <i class="bi bi-trash3 me-1"></i>@L("btn.delete")
+        </button>
+    </div>
+</div>
+
+<div class="admin-card">
+    <div class="table-responsive">
+        <table class="table admin-table mb-0">
+            <thead>
+                <tr>
+                    <th style="width:36px;">
+                        <input type="checkbox" class="form-check-input" onchange="toggleAll(this)">
+                    </th>
+                    <th>@L("col.date")</th>
+                    <th>@L("col.author")</th>
+                    <th>@L("col.object")</th>
+                    <th>@L("col.text")</th>
+                    <th>@L("col.status")</th>
+                    <th style="width:120px;"></th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var c in Model.Comments)
+                {
+                    <tr>
+                        <td>
+                            <input type="checkbox" class="form-check-input row-check" value="@c.Id" onchange="updateMassPanel()">
+                        </td>
+                        <td style="font-size:.8rem; color:#6b7280; white-space:nowrap;">@c.CreatedAt.ToString("dd.MM.yy HH:mm")</td>
+                        <td style="font-size:.85rem;">@(c.User?.UserName ?? "—")</td>
+                        <td>
+                            @if (c.Object != null)
+                            {
+                                <a href="/Object/Detail?slug=@c.Object.Slug" target="_blank" style="font-size:.82rem;">@c.Object.NameRu</a>
+                            }
+                            else { <span class="text-muted">—</span> }
+                        </td>
+                        <td>
+                            <div style="max-width:320px; font-size:.85rem; cursor:pointer;" onclick="toggleBody(@c.Id)" title="@L("expandHint")">
+                                <span id="preview_@c.Id">@(c.Body.Length > 100 ? c.Body[..100] + "…" : c.Body)</span>
+                                @if (c.Body.Length > 100)
+                                {
+                                    <div id="full_@c.Id" style="display:none; color:#374151;">@c.Body</div>
+                                }
+                            </div>
+                        </td>
+                        <td>
+                            <span class="badge @StatusBadge(c.Status)" style="font-size:.72rem;">@StatusLabel(c.Status)</span>
+                        </td>
+                        <td class="text-end" style="white-space:nowrap;">
+                            @if (c.Status != BelarusHeritage.Models.Domain.CommentStatus.Approved)
+                            {
+                                <button class="btn btn-sm btn-outline-success btn-icon me-1" title="@L("btn.approve")" onclick="action(@c.Id,'approve')">
+                                    <i class="bi bi-check2"></i>
+                                </button>
+                            }
+                            @if (c.Status != BelarusHeritage.Models.Domain.CommentStatus.Rejected)
+                            {
+                                <button class="btn btn-sm btn-outline-secondary btn-icon me-1" title="@L("btn.reject")" onclick="action(@c.Id,'reject')">
+                                    <i class="bi bi-x"></i>
+                                </button>
+                            }
+                            <button class="btn btn-sm btn-outline-warning btn-icon me-1" title="@L("status.spam")" onclick="action(@c.Id,'spam')">
+                                <i class="bi bi-shield-exclamation"></i>
+                            </button>
+                            <button class="btn btn-sm btn-outline-danger btn-icon" title="@L("btn.delete")" onclick="action(@c.Id,'delete')">
+                                <i class="bi bi-trash3"></i>
+                            </button>
+                        </td>
+                    </tr>
+                }
+                @if (!Model.Comments.Any())
+                {
+                    <tr>
+                        <td colspan="7" class="text-center text-muted py-5">
+                            <i class="bi bi-chat-slash" style="font-size:2rem; display:block; margin-bottom:8px;"></i>
+                            @L("empty")
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+    function toggleBody(id) {
+        const full = document.getElementById('full_' + id);
+        const prev = document.getElementById('preview_' + id);
+        if (full) {
+            full.style.display = full.style.display === 'none' ? 'block' : 'none';
+            prev.style.display = full.style.display === 'none' ? '' : 'none';
+        }
+    }
+
+    async function action(id, type) {
+        const endpoints = { approve: 'Approve', reject: 'Reject', spam: 'MarkSpam', delete: 'Delete' };
+        await fetch('/AdminComments/' + endpoints[type], {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(id)
+        });
+        location.reload();
+    }
+
+    function toggleAll(cb) {
+        document.querySelectorAll('.row-check').forEach(c => c.checked = cb.checked);
+        updateMassPanel();
+    }
+
+    function updateMassPanel() {
+        const n = document.querySelectorAll('.row-check:checked').length;
+        document.getElementById('massPanel').style.display = n > 0 ? 'flex' : 'none';
+    }
+
+    async function massAction(type) {
+        const ids = Array.from(document.querySelectorAll('.row-check:checked')).map(c => parseInt(c.value));
+        await fetch('/AdminComments/MassAction', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: type, ids })
+        });
+        location.reload();
+    }
+</script>
+}

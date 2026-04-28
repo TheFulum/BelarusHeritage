@@ -1,0 +1,135 @@
+@model List<BelarusHeritage.Models.Domain.TimelineEvent>
+@{
+    Layout = "_AdminLayout";
+    Func<string, string> L = key => BelarusHeritage.Localization.UiText.T(Context, $"admin.timeline.index.{key}");
+    ViewData["Title"] = BelarusHeritage.Localization.UiText.T(Context, "admin.nav.timeline");
+}
+
+<div class="admin-page-header d-flex align-items-center gap-3">
+    <div class="flex-grow-1">
+        <h1 class="admin-page-title">@BelarusHeritage.Localization.UiText.T(Context, "admin.nav.timeline")</h1>
+        <div class="admin-page-breadcrumb">
+            <a href="/AdminDashboard">@BelarusHeritage.Localization.UiText.T(Context, "admin.nav.dashboard")</a>
+            <span class="sep">/</span>
+            <span>@BelarusHeritage.Localization.UiText.T(Context, "admin.nav.timeline")</span>
+        </div>
+    </div>
+    <a href="/AdminTimeline/Create" class="btn btn-danger">
+        <i class="bi bi-plus-circle me-1"></i>@L("add")
+    </a>
+</div>
+
+<div class="admin-card">
+    <div class="table-responsive">
+        <table class="table admin-table mb-0">
+            <thead>
+                <tr>
+                    <th>@L("col.year")</th>
+                    <th>@L("col.titleRu")</th>
+                    <th>@L("col.object")</th>
+                    <th>@L("col.published")</th>
+                    <th>@L("col.order")</th>
+                    <th style="width:80px;"></th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var e in Model)
+                {
+                    <tr>
+                        <td>
+                            <span style="font-family: 'Cormorant Garamond', serif; font-size:1.1rem; font-weight:600;">@e.Year</span>
+                        </td>
+                        <td>
+                            <div style="font-weight:500; font-size:.875rem;">@e.TitleRu</div>
+                            @if (!string.IsNullOrEmpty(e.BodyRu))
+                            {
+                                <div style="font-size:.78rem; color:#9ca3af; max-width:300px;">
+                                    @(e.BodyRu.Length > 80 ? e.BodyRu[..80] + "…" : e.BodyRu)
+                                </div>
+                            }
+                        </td>
+                        <td>
+                            @if (e.Object != null)
+                            {
+                                <a href="/Object/Detail?slug=@e.Object.Slug" target="_blank" style="font-size:.82rem;">@e.Object.NameRu</a>
+                            }
+                            else { <span class="text-muted">—</span> }
+                        </td>
+                        <td>
+                            <div class="form-check form-switch">
+                                <input type="checkbox" class="form-check-input" role="switch"
+                                       @(e.IsPublished ? "checked" : "")
+                                       onchange="togglePublish(@e.Id, this)">
+                            </div>
+                        </td>
+                        <td style="font-size:.85rem; color:#6b7280;">@e.SortOrder</td>
+                        <td class="text-end">
+                            <a href="/AdminTimeline/Edit/@e.Id" class="btn btn-sm btn-outline-secondary btn-icon me-1">
+                                <i class="bi bi-pencil"></i>
+                            </a>
+                            <button class="btn btn-sm btn-outline-danger btn-icon" onclick="deleteEvent(@e.Id, '@e.TitleRu.Replace("'","\\'")')">
+                                <i class="bi bi-trash3"></i>
+                            </button>
+                        </td>
+                    </tr>
+                }
+                @if (!Model.Any())
+                {
+                    <tr>
+                        <td colspan="6" class="text-center text-muted py-5">
+                            <i class="bi bi-calendar-x" style="font-size:2rem; display:block; margin-bottom:8px;"></i>
+                            @L("empty") <a href="/AdminTimeline/Create">@L("addFirst")</a>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="modal fade" id="deleteModal" tabindex="-1">
+    <div class="modal-dialog modal-sm">
+        <div class="modal-content">
+            <div class="modal-header border-0 pb-0">
+                <h6 class="modal-title fw-semibold">@L("deleteTitle")</h6>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body"><p style="font-size:.875rem;">«<span id="deleteEventTitle"></span>»</p></div>
+            <div class="modal-footer border-0 pt-0">
+                <button class="btn btn-sm btn-secondary" data-bs-dismiss="modal">@BelarusHeritage.Localization.UiText.T(Context, "btn.cancel")</button>
+                <button class="btn btn-sm btn-danger" id="deleteConfirmBtn">@BelarusHeritage.Localization.UiText.T(Context, "admin.objects.index.btn.delete")</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+    const deleteModal = new bootstrap.Modal('#deleteModal');
+    let pendingId = null;
+
+    function deleteEvent(id, title) {
+        pendingId = id;
+        document.getElementById('deleteEventTitle').textContent = title;
+        deleteModal.show();
+    }
+
+    document.getElementById('deleteConfirmBtn').addEventListener('click', async () => {
+        await fetch('/AdminTimeline/Delete', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(pendingId)
+        });
+        deleteModal.hide();
+        location.reload();
+    });
+
+    async function togglePublish(id, cb) {
+        const res = await fetch('/AdminTimeline/TogglePublish', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(id)
+        });
+        const json = await res.json();
+        cb.checked = json.isPublished;
+    }
+</script>
+}

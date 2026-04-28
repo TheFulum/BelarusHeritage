@@ -1,0 +1,326 @@
+@model BelarusHeritage.Models.ViewModels.OrnamentIndexViewModel
+@{
+    var lang = BelarusHeritage.Localization.UiText.Lang(Context);
+    ViewData["Title"] = BelarusHeritage.Localization.UiText.T(Context, "ornament.index.title");
+}
+
+@section Styles {
+<style>
+    /* ── Hero ── */
+    .orn-hero {
+        background: linear-gradient(135deg, #1a1a2e 0%, #2d1b33 40%, #3B5E3F 100%);
+        padding: 56px 0 44px;
+        text-align: center;
+        position: relative;
+        overflow: hidden;
+    }
+    .orn-hero::before {
+        content: '';
+        position: absolute; inset: 0;
+        background: url("data:image/svg+xml,%3Csvg width='40' height='40' viewBox='0 0 40 40' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%23ffffff' fill-opacity='0.04'%3E%3Cpath d='M20 0L0 20l20 20 20-20z'/%3E%3C/g%3E%3C/svg%3E");
+    }
+    .orn-hero-title {
+        font-family: 'Cormorant Garamond', serif;
+        font-size: clamp(2rem, 5vw, 3.2rem);
+        font-weight: 700;
+        color: #fff;
+        margin-bottom: 8px;
+        position: relative;
+    }
+    .orn-hero-subtitle {
+        font-size: .95rem;
+        color: rgba(255,255,255,.65);
+        position: relative;
+        margin-bottom: 1.25rem;
+    }
+    .orn-hero-cta {
+        position: relative;
+        font-weight: 600;
+        padding: .65rem 1.6rem;
+        border-radius: 8px;
+        box-shadow: 0 8px 24px rgba(0,0,0,.25);
+    }
+    .orn-hero-cta:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 12px 28px rgba(0,0,0,.30);
+    }
+
+    /* ── Toolbar ── */
+    .orn-toolbar {
+        background: #fff;
+        border-bottom: 1px solid #E0D8CC;
+        padding: 16px 0;
+        position: sticky;
+        top: 0;
+        z-index: 100;
+        box-shadow: 0 2px 8px rgba(0,0,0,.06);
+    }
+    .orn-toolbar .input-group { max-width: 400px; }
+    .orn-count {
+        font-size: .85rem;
+        color: #6B6B6B;
+    }
+    .orn-count strong { color: #8B1A2A; }
+
+    /* ── Gallery grid ── */
+    .orn-gallery {
+        padding: 40px 0 60px;
+    }
+    .orn-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+        gap: 20px;
+    }
+
+    /* ── Card ── */
+    .orn-card {
+        background: #fff;
+        border-radius: 10px;
+        overflow: hidden;
+        box-shadow: 0 2px 10px rgba(0,0,0,.08);
+        cursor: pointer;
+        transition: box-shadow .25s, transform .25s;
+    }
+    .orn-card:hover {
+        box-shadow: 0 8px 28px rgba(0,0,0,.15);
+        transform: translateY(-3px);
+    }
+    .orn-card-img-wrap {
+        position: relative;
+        overflow: hidden;
+        background: #f0ebe3;
+        aspect-ratio: 1 / 1;
+    }
+    .orn-card-img {
+        width: 100%; height: 100%;
+        object-fit: cover;
+        display: block;
+        transition: transform .35s;
+    }
+    .orn-card:hover .orn-card-img { transform: scale(1.06); }
+    .orn-card-overlay {
+        position: absolute; inset: 0;
+        background: rgba(26, 26, 26, 0);
+        display: flex; align-items: center; justify-content: center;
+        transition: background .25s;
+    }
+    .orn-card:hover .orn-card-overlay { background: rgba(26, 26, 26, .35); }
+    .orn-card-overlay-icon {
+        color: #fff;
+        font-size: 2rem;
+        opacity: 0;
+        transition: opacity .25s;
+    }
+    .orn-card:hover .orn-card-overlay-icon { opacity: 1; }
+
+    .orn-card-body {
+        padding: 10px 12px 12px;
+    }
+    .orn-card-title {
+        font-family: 'Cormorant Garamond', serif;
+        font-size: .95rem;
+        font-weight: 600;
+        color: #1A1A1A;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        margin-bottom: 3px;
+    }
+    .orn-card-meta {
+        font-size: .75rem;
+        color: #6B6B6B;
+    }
+
+    /* ── Empty state ── */
+    .orn-empty {
+        text-align: center;
+        padding: 80px 20px;
+        color: #6B6B6B;
+    }
+    .orn-empty-icon { font-size: 3rem; margin-bottom: 16px; display: block; }
+
+    /* ── Lightbox modal ── */
+    #ornLightbox .modal-content {
+        background: #1a1a1a;
+        border: none;
+        border-radius: 12px;
+    }
+    #ornLightbox .modal-body { padding: 0; position: relative; }
+    #ornLightbox .modal-header {
+        background: #1a1a1a;
+        border-bottom: none;
+        padding: 12px 16px 8px;
+    }
+    #ornLightbox .modal-title { color: #fff; font-family: 'Cormorant Garamond', serif; font-size: 1.1rem; }
+    #ornLightbox .btn-close { filter: invert(1); }
+    .orn-lb-img {
+        width: 100%;
+        max-height: 80vh;
+        object-fit: contain;
+        display: block;
+        border-radius: 0 0 12px 12px;
+    }
+    .orn-lb-footer {
+        background: #1a1a1a;
+        color: rgba(255,255,255,.5);
+        font-size: .75rem;
+        padding: 8px 16px 12px;
+        border-radius: 0 0 12px 12px;
+    }
+
+    /* ── Pagination ── */
+    .orn-pagination { padding: 8px 0 40px; }
+    .page-link { color: #8B1A2A; }
+    .page-item.active .page-link { background: #8B1A2A; border-color: #8B1A2A; color: #fff; }
+    .page-link:hover { color: #6a1420; }
+
+    @@media (max-width: 480px) {
+        .orn-grid { grid-template-columns: repeat(2, 1fr); gap: 12px; }
+    }
+</style>
+}
+
+<!-- Hero -->
+<div class="orn-hero">
+    <div class="container">
+        <h1 class="orn-hero-title">@BelarusHeritage.Localization.UiText.T(Context, "ornament.index.title")</h1>
+        <p class="orn-hero-subtitle">@BelarusHeritage.Localization.UiText.T(Context, "ornament.index.subtitle")</p>
+        <a href="@Url.Action("Builder", "Ornament")" class="btn btn-light btn-lg orn-hero-cta">
+            <i class="bi bi-palette2 me-2"></i>@BelarusHeritage.Localization.UiText.T(Context, "ornament.index.cta.create")
+        </a>
+    </div>
+</div>
+
+<!-- Toolbar -->
+<div class="orn-toolbar">
+    <div class="container">
+        <form method="get" class="d-flex flex-wrap gap-3 align-items-center">
+            <div class="input-group">
+                <input type="text" name="q" class="form-control" placeholder="@BelarusHeritage.Localization.UiText.T(Context, "ornament.index.searchPlaceholder")"
+                       value="@Model.SearchQuery">
+                <button class="btn btn-outline-secondary" type="submit">
+                    <i class="bi bi-search"></i>
+                </button>
+                @if (!string.IsNullOrEmpty(Model.SearchQuery))
+                {
+                    <a href="@Url.Action("Index", "Ornament", new { sortBy = Model.SortBy })" class="btn btn-outline-danger">
+                        <i class="bi bi-x"></i>
+                    </a>
+                }
+            </div>
+            <select name="sortBy" class="form-select" style="max-width:180px" onchange="this.form.submit()">
+                <option value="newest" selected="@(Model.SortBy == "newest" ? "selected" : null)">@BelarusHeritage.Localization.UiText.T(Context, "ornament.index.sort.newest")</option>
+                <option value="oldest" selected="@(Model.SortBy == "oldest" ? "selected" : null)">@BelarusHeritage.Localization.UiText.T(Context, "ornament.index.sort.oldest")</option>
+            </select>
+            <input type="hidden" name="page" value="1">
+            <span class="orn-count ms-auto">
+                @BelarusHeritage.Localization.UiText.T(Context, "ornament.index.found") <strong>@Model.TotalCount</strong> @BelarusHeritage.Localization.UiText.T(Context, "ornament.index.items")
+            </span>
+        </form>
+    </div>
+</div>
+
+<!-- Gallery -->
+<div class="orn-gallery">
+    <div class="container">
+        @if (!Model.Ornaments.Any())
+        {
+            <div class="orn-empty" data-aos="fade-up">
+                <i class="bi bi-grid-3x3-gap orn-empty-icon"></i>
+                <h4>@BelarusHeritage.Localization.UiText.T(Context, "ornament.index.empty.title")</h4>
+                <p>@BelarusHeritage.Localization.UiText.T(Context, "ornament.index.empty.text")</p>
+                <a href="@Url.Action("Builder", "Ornament")" class="btn btn-primary mt-2">
+                    <i class="bi bi-palette2 me-2"></i>@BelarusHeritage.Localization.UiText.T(Context, "ornament.index.cta.create")
+                </a>
+            </div>
+        }
+        else
+        {
+            <div class="orn-grid">
+                @foreach (var item in Model.Ornaments)
+                {
+                    <div class="orn-card" data-aos="fade-up"
+                         data-img="@item.ImageUrl"
+                         data-title="@(item.Title ?? BelarusHeritage.Localization.UiText.T(Context, "ornament.index.untitled"))"
+                         data-author="@(item.User?.UserName ?? "")"
+                         data-date="@item.CreatedAt.ToString("dd.MM.yyyy")"
+                         onclick="openLightbox(this)">
+                        <div class="orn-card-img-wrap">
+                            <img src="@item.ImageUrl" class="orn-card-img" alt="@(item.Title ?? BelarusHeritage.Localization.UiText.T(Context, "ornament.index.untitled"))" loading="lazy">
+                            <div class="orn-card-overlay">
+                                <i class="bi bi-zoom-in orn-card-overlay-icon"></i>
+                            </div>
+                        </div>
+                        <div class="orn-card-body">
+                            <div class="orn-card-title">@(item.Title ?? BelarusHeritage.Localization.UiText.T(Context, "ornament.index.untitled"))</div>
+                            <div class="orn-card-meta">
+                                @(item.User?.UserName ?? "") · @item.CreatedAt.ToString("dd.MM.yyyy")
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+
+            <!-- Pagination -->
+            @if (Model.TotalPages > 1)
+            {
+                <nav class="orn-pagination d-flex justify-content-center mt-4" aria-label="@BelarusHeritage.Localization.UiText.T(Context, "ornament.index.pagination")">
+                    <ul class="pagination">
+                        <li class="page-item @(Model.CurrentPage == 1 ? "disabled" : "")">
+                            <a class="page-link" href="@Url.Action("Index", "Ornament", new { q = Model.SearchQuery, sortBy = Model.SortBy, page = Model.CurrentPage - 1 })">
+                                &laquo;
+                            </a>
+                        </li>
+                        @for (var p = Math.Max(1, Model.CurrentPage - 2); p <= Math.Min(Model.TotalPages, Model.CurrentPage + 2); p++)
+                        {
+                            <li class="page-item @(p == Model.CurrentPage ? "active" : "")">
+                                <a class="page-link" href="@Url.Action("Index", "Ornament", new { q = Model.SearchQuery, sortBy = Model.SortBy, page = p })">@p</a>
+                            </li>
+                        }
+                        <li class="page-item @(Model.CurrentPage == Model.TotalPages ? "disabled" : "")">
+                            <a class="page-link" href="@Url.Action("Index", "Ornament", new { q = Model.SearchQuery, sortBy = Model.SortBy, page = Model.CurrentPage + 1 })">
+                                &raquo;
+                            </a>
+                        </li>
+                    </ul>
+                </nav>
+            }
+        }
+    </div>
+</div>
+
+<!-- Lightbox Modal -->
+<div class="modal fade" id="ornLightbox" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <span class="modal-title" id="ornLbTitle"></span>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <img id="ornLbImg" src="" class="orn-lb-img" alt="">
+            </div>
+            <div class="orn-lb-footer" id="ornLbMeta"></div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+    function openLightbox(card) {
+        const img   = card.dataset.img;
+        const title = card.dataset.title;
+        const author = card.dataset.author;
+        const date  = card.dataset.date;
+
+        document.getElementById('ornLbImg').src = img;
+        document.getElementById('ornLbImg').alt = title;
+        document.getElementById('ornLbTitle').textContent = title;
+        document.getElementById('ornLbMeta').textContent = author
+            ? `${author} · ${date}`
+            : date;
+
+        new bootstrap.Modal(document.getElementById('ornLightbox')).show();
+    }
+</script>
+}

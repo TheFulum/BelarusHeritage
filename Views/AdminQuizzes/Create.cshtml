@@ -1,0 +1,83 @@
+@model BelarusHeritage.Models.Domain.Quiz
+@{
+    Layout = "_AdminLayout";
+    ViewData["Title"] = BelarusHeritage.Localization.UiText.T(Context, "admin.quizzes.create.title");
+    string L(string key) => BelarusHeritage.Localization.UiText.T(Context, $"admin.quizzes.create.{key}");
+}
+
+<div class="admin-page-header">
+    <h1 class="admin-page-title">@BelarusHeritage.Localization.UiText.T(Context, "admin.quizzes.create.title")</h1>
+    <div class="admin-page-breadcrumb">
+        <a href="/AdminDashboard">@BelarusHeritage.Localization.UiText.T(Context, "admin.nav.dashboard")</a>
+        <span class="sep">/</span>
+        <a href="/AdminQuizzes">@BelarusHeritage.Localization.UiText.T(Context, "admin.nav.quizzes")</a>
+        <span class="sep">/</span>
+        <span>@BelarusHeritage.Localization.UiText.T(Context, "admin.quizzes.create.title")</span>
+    </div>
+</div>
+
+<form asp-action="SaveQuiz" method="post">
+    <input asp-for="Id" type="hidden" value="0">
+    <div class="admin-card">
+        <div class="admin-card-body">
+            <div class="row g-3">
+                <div class="col-md-3">
+                    <label class="form-label" style="font-size:.8rem; font-weight:600;">@L("label.slugReq")</label>
+                    <input asp-for="Slug" class="form-control" placeholder="belarus-castles" required>
+                    <div class="form-text" style="font-size:.72rem;">@BelarusHeritage.Localization.UiText.T(Context, "admin.quizzes.form.slugHint")</div>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label" style="font-size:.8rem; font-weight:600;">@L("label.typeReq")</label>
+                    <select asp-for="Type" class="form-select">
+                        <option value="0">@BelarusHeritage.Localization.UiText.T(Context, "admin.quizzes.index.type.imageGuess") (@BelarusHeritage.Localization.UiText.T(Context, "admin.quizzes.form.byPhoto"))</option>
+                        <option value="1">@BelarusHeritage.Localization.UiText.T(Context, "admin.quizzes.index.type.regionGuess")</option>
+                        <option value="2">@BelarusHeritage.Localization.UiText.T(Context, "admin.quizzes.index.type.dragDrop")</option>
+                        <option value="3">@BelarusHeritage.Localization.UiText.T(Context, "admin.quizzes.index.type.centuryGuess")</option>
+                        <option value="4">@BelarusHeritage.Localization.UiText.T(Context, "admin.quizzes.index.type.oddOneOut")</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label" style="font-size:.8rem; font-weight:600;">@BelarusHeritage.Localization.UiText.T(Context, "admin.timeline.index.col.order")</label>
+                    <input asp-for="SortOrder" type="number" class="form-control" value="0" min="0">
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label" style="font-size:.8rem; font-weight:600;">@BelarusHeritage.Localization.UiText.T(Context, "admin.quizzes.form.timeLimitSec")</label>
+                    <input asp-for="TimeLimit" type="number" class="form-control" placeholder="@BelarusHeritage.Localization.UiText.T(Context, "admin.quizzes.create.timeLimitPh")" min="0">
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label" style="font-size:.8rem; font-weight:600;">@L("label.nameRuReq")</label>
+                    <input asp-for="TitleRu" class="form-control" required>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label" style="font-size:.8rem; font-weight:600;">@L("label.nameBe")</label>
+                    <input asp-for="TitleBe" class="form-control">
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label" style="font-size:.8rem; font-weight:600;">@L("label.nameEn")</label>
+                    <input asp-for="TitleEn" class="form-control">
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label" style="font-size:.8rem; font-weight:600;">@BelarusHeritage.Localization.UiText.T(Context, "admin.timeline.form.descRu")</label>
+                    <textarea asp-for="DescriptionRu" class="form-control" rows="2"></textarea>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label" style="font-size:.8rem; font-weight:600;">@BelarusHeritage.Localization.UiText.T(Context, "admin.timeline.form.descEn")</label>
+                    <textarea asp-for="DescriptionEn" class="form-control" rows="2"></textarea>
+                </div>
+                <div class="col-12">
+                    <div class="form-check">
+                        <input asp-for="IsActive" class="form-check-input" type="checkbox" checked>
+                        <label class="form-check-label" style="font-size:.875rem;">@BelarusHeritage.Localization.UiText.T(Context, "admin.quizzes.form.activeVisible")</label>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="d-flex gap-2 mt-3">
+        <button type="submit" class="btn btn-danger">
+            <i class="bi bi-check2 me-1"></i>@BelarusHeritage.Localization.UiText.T(Context, "admin.quizzes.create.btn.createAndAdd")
+        </button>
+        <a href="/AdminQuizzes" class="btn btn-outline-secondary">@L("btn.cancel")</a>
+    </div>
+</form>

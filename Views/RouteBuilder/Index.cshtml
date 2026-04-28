@@ -1,0 +1,1501 @@
+@{
+    var lang = BelarusHeritage.Localization.UiText.Lang(Context);
+    ViewData["Title"] = Localize("title");
+    var routeId = ViewBag.RouteId as int?;
+    var addObjectId = ViewBag.AddObjectId as int?;
+    var isAuth = User.Identity?.IsAuthenticated == true;
+}
+
+@section Styles {
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css">
+<link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css">
+<style>
+    .route-builder-page {
+        background: linear-gradient(180deg, #f9f4eb 0%, #ffffff 42%);
+        border: 1px solid #ece5da;
+        border-radius: 18px;
+        padding: 18px;
+        box-shadow: 0 14px 34px rgba(44, 34, 19, .08);
+    }
+    .route-builder-grid { display: grid; grid-template-columns: minmax(300px, 390px) 1fr; gap: 18px; }
+    .route-map-wrap {
+        position: sticky;
+        top: calc(var(--header-total-height, 72px) + 12px);
+        align-self: start;
+    }
+    .route-map-stage { position: relative; }
+    .route-map { width: 100%; min-height: 640px; border: 1px solid #e4ded3; border-radius: 14px; box-shadow: inset 0 0 0 1px rgba(255,255,255,.45); }
+    .route-map-loading {
+        position: absolute;
+        inset: 0;
+        border-radius: 14px;
+        background: rgba(255,255,255,.7);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 500;
+    }
+    .route-map-loading-box {
+        display: inline-flex;
+        align-items: center;
+        gap: 9px;
+        background: rgba(17,24,39,.93);
+        color: #fff;
+        border-radius: 999px;
+        padding: 10px 14px;
+        font-size: .85rem;
+        font-weight: 700;
+        box-shadow: 0 10px 24px rgba(0,0,0,.24);
+    }
+    .route-map-spinner {
+        width: 16px;
+        height: 16px;
+        border-radius: 50%;
+        border: 2px solid rgba(255,255,255,.35);
+        border-top-color: #fff;
+        animation: routeMapSpin .8s linear infinite;
+    }
+    @@keyframes routeMapSpin { to { transform: rotate(360deg); } }
+    .route-panel { border: 1px solid #e4ded3; border-radius: 14px; background: rgba(255,255,255,.94); box-shadow: 0 8px 22px rgba(32, 23, 12, .06); }
+    .route-stop-item { border: 1px solid #ece5da; border-radius: 12px; padding: 8px; margin-bottom: 10px; background: #fff; box-shadow: 0 4px 12px rgba(0,0,0,.04); }
+    .route-stop-item[draggable="true"] { cursor: grab; }
+    .route-stop-item.dragging { opacity: .5; cursor: grabbing; }
+    .route-stop-item.drag-over { border-color: #8B1A2A; background: #fff7f8; }
+    .route-stop-head { display: flex; align-items: stretch; gap: 10px; }
+    .route-stop-index {
+        width: 26px;
+        height: 26px;
+        border-radius: 50%;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-size: .75rem;
+        font-weight: 700;
+        background: #8b1a2a;
+        color: #fff;
+        margin-top: 4px;
+        flex-shrink: 0;
+    }
+    .route-stop-thumb {
+        width: 64px;
+        height: 64px;
+        border-radius: 10px;
+        object-fit: cover;
+        background: #f3efe9;
+        border: 1px solid #ece5da;
+        flex-shrink: 0;
+    }
+    .route-stop-placeholder {
+        width: 64px;
+        height: 64px;
+        border-radius: 10px;
+        border: 1px solid #ece5da;
+        background: #f8f5f1;
+        color: #9ca3af;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.25rem;
+        flex-shrink: 0;
+    }
+    .route-stop-title {
+        font-size: .95rem;
+        font-weight: 600;
+        color: #1f2937;
+        margin-bottom: 3px;
+        line-height: 1.3;
+    }
+    .route-stop-coords { font-size: .78rem; color: #6b7280; }
+    .route-drag-handle {
+        color: #9ca3af;
+        font-size: 1rem;
+        line-height: 1;
+        padding-top: 6px;
+        user-select: none;
+    }
+    .route-panel .form-control {
+        border-color: #e3dccf;
+        border-radius: 10px;
+    }
+    .route-panel .form-control:focus {
+        border-color: #8B1A2A;
+        box-shadow: 0 0 0 3px rgba(139,26,42,.1);
+    }
+    .route-endpoint-card {
+        border: 1px solid #ece5da;
+        border-radius: 12px;
+        padding: 10px;
+        margin-bottom: 10px;
+        background: #fff;
+    }
+    .route-endpoint-title { font-size: .8rem; font-weight: 700; color: #374151; margin-bottom: 8px; }
+    #routeMetaLine {
+        border-top: 1px dashed #e5e7eb;
+        padding-top: 10px;
+        margin-top: 6px;
+        white-space: pre-line;
+    }
+    .route-panel-kpi {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 8px;
+        margin-bottom: 12px;
+    }
+    .route-kpi {
+        border: 1px solid #efe7db;
+        background: rgba(255,255,255,.85);
+        border-radius: 12px;
+        padding: 10px 10px;
+        box-shadow: 0 10px 22px rgba(17,24,39,.05);
+        min-height: 56px;
+    }
+    .route-kpi .kpi-label { font-size: .7rem; color: #6b7280; text-transform: uppercase; letter-spacing: .06em; }
+    .route-kpi .kpi-value { font-weight: 800; color: #111827; margin-top: 3px; white-space: pre-line; }
+    .route-empty {
+        border: 1px dashed #e6ddcf;
+        background: #fff;
+        border-radius: 14px;
+        padding: 14px 12px;
+        color: #6b7280;
+        display: flex;
+        gap: 10px;
+        align-items: flex-start;
+    }
+    .route-empty i { font-size: 1.2rem; color: #c68b2a; margin-top: 2px; }
+    .route-legs-wrap { border-top: 1px dashed #e5e7eb; padding-top: 10px; margin-top: 10px; }
+    .route-leg-item { border: 1px solid #ece5da; border-radius: 10px; padding: 8px; margin-bottom: 8px; background: #fff; }
+    .route-leg-title { font-size: .8rem; font-weight: 700; margin-bottom: 6px; color: #374151; }
+    .route-segment-badge {
+        width: 24px;
+        height: 24px;
+        border-radius: 50%;
+        background: rgba(139, 26, 42, .95);
+        color: #fff;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 12px;
+        font-weight: 800;
+        border: 2px solid #fff;
+        box-shadow: 0 4px 10px rgba(0,0,0,.22);
+    }
+    .route-alt-hint {
+        background: rgba(17,24,39,.98);
+        color: #fff;
+        border: 1px solid rgba(255,255,255,.45);
+        border-radius: 8px;
+        box-shadow: 0 10px 24px rgba(0,0,0,.36);
+        padding: 5px 9px;
+        font-size: 12px;
+        font-weight: 700;
+    }
+
+    @@media (max-width: 991.98px) {
+        .route-builder-grid { grid-template-columns: 1fr; }
+        .route-map { min-height: 500px; }
+        .route-map-wrap { position: static; top: auto; }
+        .route-builder-page { padding: 12px; border-radius: 14px; }
+    }
+</style>
+}
+
+<div class="container py-4">
+    <div class="route-builder-page">
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-3">
+        <div>
+            <h1 class="h3 mb-1">@Localize("title")</h1>
+            <div class="text-muted">
+                @Localize("subtitle")
+            </div>
+        </div>
+        <div class="d-flex gap-2">
+            <button type="button" class="btn btn-outline-secondary" id="clearRouteBtn">@Localize("btn.clear")</button>
+            <button type="button" class="btn btn-outline-primary" id="optimizeRouteBtn">@Localize("btn.optimize")</button>
+            <button type="button" class="btn btn-danger" id="saveRouteBtn">@Localize("btn.save")</button>
+        </div>
+    </div>
+
+    <div class="route-builder-grid">
+        <aside class="route-panel p-3">
+            <div class="route-panel-kpi">
+                <div class="route-kpi">
+                    <div class="kpi-label">@Localize("kpi.stops")</div>
+                    <div class="kpi-value" id="kpiStops">0</div>
+                </div>
+                <div class="route-kpi">
+                    <div class="kpi-label">@Localize("kpi.distance")</div>
+                    <div class="kpi-value" id="kpiKm">—</div>
+                </div>
+                <div class="route-kpi">
+                    <div class="kpi-label">@Localize("kpi.status")</div>
+                    <div class="kpi-value" id="kpiStatus">@Localize("kpi.status.draft")</div>
+                </div>
+            </div>
+            <div class="mb-3">
+                <label for="routeSelect" class="form-label">@Localize("field.route")</label>
+                <div class="d-flex gap-2">
+                    <select id="routeSelect" class="form-select">
+                        <option value="">@Localize("field.route.new")</option>
+                    </select>
+                    <button type="button" class="btn btn-outline-secondary" id="newRouteBtn">@Localize("btn.new")</button>
+                </div>
+            </div>
+            <div class="mb-3">
+                <label for="routeTitleInput" class="form-label">@Localize("field.title")</label>
+                <input type="text" id="routeTitleInput" class="form-control" placeholder="@Localize("field.titlePh")">
+            </div>
+            <div class="mb-3">
+                <label for="routeDescriptionInput" class="form-label">@Localize("field.desc")</label>
+                <textarea id="routeDescriptionInput" class="form-control" rows="3" placeholder="@Localize("field.descPh")"></textarea>
+            </div>
+            <div class="mb-3">
+                <div class="route-endpoint-card">
+                    <div class="route-endpoint-title">@Localize("field.start")</div>
+                    <input type="text" id="routeStartAddressInput" class="form-control mb-2" placeholder="@Localize("field.startPh")">
+                    <div class="d-flex gap-2">
+                        <button type="button" class="btn btn-sm btn-outline-secondary" id="pickStartOnMapBtn">@Localize("btn.pickOnMap")</button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary" id="clearStartBtn">@Localize("btn.clearPoint")</button>
+                    </div>
+                </div>
+                <div class="route-endpoint-card mb-0">
+                    <div class="route-endpoint-title">@Localize("field.end")</div>
+                    <input type="text" id="routeEndAddressInput" class="form-control mb-2" placeholder="@Localize("field.endPh")">
+                    <div class="d-flex gap-2">
+                        <button type="button" class="btn btn-sm btn-outline-secondary" id="pickEndOnMapBtn">@Localize("btn.pickOnMap")</button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary" id="clearEndBtn">@Localize("btn.clearPoint")</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="d-flex align-items-center justify-content-between mb-2">
+                <strong>@Localize("stops.title")</strong>
+                <span class="badge bg-secondary" id="stopCountBadge">0</span>
+            </div>
+            <div id="routeStopsList" class="mb-3">
+                <div class="text-muted small">@Localize("stops.empty")</div>
+            </div>
+            <div class="route-legs-wrap mb-2">
+                <div class="d-flex align-items-center justify-content-between mb-2">
+                    <strong>@Localize("legs.title")</strong>
+                </div>
+                <div id="routeLegsList" class="small text-muted">@Localize("legs.empty")</div>
+            </div>
+            <div class="small text-muted mb-2" id="routeSourceLine"></div>
+            <div class="small text-muted" id="routeMetaLine"></div>
+        </aside>
+
+        <section>
+            <div class="route-map-wrap">
+                <div class="route-map-stage">
+                    <div id="routeMap" class="route-map"></div>
+                    <div id="routeMapLoading" class="route-map-loading" hidden>
+                        <div class="route-map-loading-box">
+                            <span class="route-map-spinner" aria-hidden="true"></span>
+                            <span>@Localize("msg.mapLoading")</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </div>
+    </div>
+</div>
+
+@section Scripts {
+<script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+<script src="https://unpkg.com/@@maplibre/maplibre-gl-leaflet@0.1.2/leaflet-maplibre-gl.js"></script>
+<script>
+    (() => {
+        const routeConfig = {
+            isAuthenticated: @((isAuth ? "true" : "false")),
+            routeId: @(routeId?.ToString() ?? "null"),
+            addObjectId: @(addObjectId?.ToString() ?? "null"),
+            lang: '@lang'
+        };
+
+        const i18n = {
+            emptyStops: '@Localize("stops.empty")',
+            removeStopTitle: '@Localize("stops.removeTitle")',
+            noCoords: '@Localize("stops.noCoords")',
+            guestMode: '@Localize("meta.guest")',
+            notSaved: '@Localize("meta.notSaved")',
+            routePrefix: '@Localize("meta.route")',
+            pathLabel: '@Localize("meta.path")',
+            km: '@Localize("meta.km")',
+            min: '@Localize("meta.min")',
+            hour: '@Localize("meta.hour")',
+            day: '@Localize("meta.day")',
+            objectFallback: '@Localize("meta.object")',
+            myRoute: '@Localize("defaults.myRoute")',
+            guestsAdd: '@Localize("msg.guestsAdd")',
+            stopAdded: '@Localize("msg.added")',
+            orderSaved: '@Localize("msg.orderSaved")',
+            orderSaveFailed: '@Localize("msg.orderSaveFailed")',
+            guestsSave: '@Localize("msg.guestsSave")',
+            needTitle: '@Localize("msg.needTitle")',
+            saved: '@Localize("msg.saved")',
+            updated: '@Localize("msg.updated")',
+            loadFailed: '@Localize("msg.loadFailed")',
+            mapPickStart: '@Localize("msg.mapPickStart")',
+            mapPickEnd: '@Localize("msg.mapPickEnd")',
+            mapPickDone: '@Localize("msg.mapPickDone")',
+            mapLoading: '@Localize("msg.mapLoading")',
+            geocodeFailed: '@Localize("msg.geocodeFailed")',
+            routeRoadFailed: '@Localize("msg.routeRoadFailed")',
+            optimizeNeedRoute: '@Localize("msg.optimizeNeedRoute")',
+            optimizeDone: '@Localize("msg.optimizeDone")',
+            optimizeFailed: '@Localize("msg.optimizeFailed")',
+            legsEmpty: '@Localize("legs.empty")',
+            sourcePrefix: '@Localize("meta.sourcePrefix")',
+            sourceTaken: '@Localize("meta.sourceTaken")',
+            confirmAddTitle: '@Localize("msg.confirmAddTitle")',
+            confirmAddMessage: '@Localize("msg.confirmAddMessage")',
+            confirmChooseExisting: '@Localize("msg.confirmChooseExisting")',
+            confirmCreateNew: '@Localize("msg.confirmCreateNew")',
+            addFirstTitle: '@Localize("stops.addFirstTitle")',
+            kpiStatusGuest: '@Localize("kpi.status.guest")',
+            kpiStatusNew: '@Localize("kpi.status.new")',
+            kpiStatusSaved: '@Localize("kpi.status.saved")',
+            legDeltaDistanceSame: '@Localize("legs.delta.distance.same")',
+            legDeltaTimeSame: '@Localize("legs.delta.time.same")',
+            legDeltaDistanceLonger: '@Localize("legs.delta.distance.longer")',
+            legDeltaDistanceShorter: '@Localize("legs.delta.distance.shorter")',
+            legDeltaTimeLonger: '@Localize("legs.delta.time.longer")',
+            legDeltaTimeFaster: '@Localize("legs.delta.time.faster")',
+            legTooltipSegment: '@Localize("legs.tooltip.segment")',
+            legTooltipOption: '@Localize("legs.tooltip.option")',
+            legsOption: '@Localize("legs.option")',
+            fieldRouteNew: '@Localize("field.route.new")'
+        };
+
+        const defaultCenter = [53.7098, 27.9534];
+        const map = L.map('routeMap', { attributionControl: false }).setView(defaultCenter, 7);
+        const routeMapLoadingEl = document.getElementById('routeMapLoading');
+        initializeBaseMap();
+
+        function setMapLoading(isLoading) {
+            if (!routeMapLoadingEl) return;
+            if (isLoading) routeMapLoadingEl.removeAttribute('hidden');
+            else routeMapLoadingEl.setAttribute('hidden', 'hidden');
+        }
+
+        async function initializeBaseMap() {
+            try {
+                const style = await loadLocalizedStyle(routeConfig.lang);
+                if (!window.maplibregl || typeof L.maplibreGL !== 'function') throw new Error('maplibre_missing');
+                baseMapLayer = L.maplibreGL({
+                    style,
+                    maplibreOptions: { attributionControl: false }
+                }).addTo(map);
+            } catch {
+                baseMapLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                    maxZoom: 19,
+                    attribution: ''
+                }).addTo(map);
+            }
+        }
+
+        async function loadLocalizedStyle(siteLang) {
+            const response = await fetch('https://tiles.openfreemap.org/styles/liberty');
+            if (!response.ok) throw new Error('style_fetch_failed');
+            const style = await response.json();
+
+            const lang = siteLang === 'en' ? 'en' : siteLang === 'ru' ? 'ru' : 'be';
+            const fallback = lang === 'be'
+                ? ['name:be', 'name_be', 'name:ru', 'name_ru', 'name:en', 'name_en', 'name']
+                : [`name:${lang}`, `name_${lang}`, 'name:en', 'name_en', 'name'];
+
+            (style.layers || []).forEach(layer => {
+                if (!layer?.layout || !layer.layout['text-field']) return;
+
+                const currentTextField = layer.layout['text-field'];
+                if (JSON.stringify(currentTextField) === JSON.stringify(['to-string', ['get', 'ref']])) return;
+
+                layer.layout['text-field'] = ['coalesce', ...fallback.map(k => ['get', k]), currentTextField];
+            });
+
+            return style;
+        }
+
+        let state = {
+            routeId: routeConfig.routeId,
+            title: '',
+            description: '',
+            totalKm: null,
+            totalMinutes: null,
+            sourceRouteTitle: null,
+            sourceRouteShareToken: null,
+            startAddress: null,
+            startLat: null,
+            startLng: null,
+            endAddress: null,
+            endLat: null,
+            endLng: null,
+            stops: []
+        };
+        let userRoutes = [];
+        let mapPickMode = null;
+        let roadRouteWarningShown = false;
+        let routeLayer = null;
+        let legAlternatives = [];
+        let legSelection = [];
+        let legSignature = '';
+        let baseMapLayer = null;
+
+        const markers = [];
+        let startMarker = null;
+        let endMarker = null;
+        let polyline = null;
+
+        function getNameByLang(o) {
+            if (!o) return '';
+            return routeConfig.lang === 'en' ? (o.nameEn || o.nameRu || '') :
+                   routeConfig.lang === 'be' ? (o.nameBe || o.nameRu || '') :
+                   (o.nameRu || '');
+        }
+
+        function normalizeImageUrl(url) {
+            if (!url) return '';
+            const s = String(url).replace(/\\/g, '/');
+            if (s.startsWith('http://') || s.startsWith('https://') || s.startsWith('/')) return s;
+            return '/' + s;
+        }
+
+        function renderStops(stops) {
+            const wrap = document.getElementById('routeStopsList');
+            const count = document.getElementById('stopCountBadge');
+            count.textContent = String(stops.length);
+            document.getElementById('kpiStops')?.replaceChildren(document.createTextNode(String(stops.length)));
+
+            if (!stops.length) {
+                wrap.innerHTML = `<div class="route-empty">
+                    <i class="bi bi-plus-circle"></i>
+                    <div>
+                        <div style="font-weight:700;color:#111827;margin-bottom:2px">${esc(i18n.addFirstTitle)}</div>
+                        <div class="small">${esc(i18n.emptyStops)}</div>
+                    </div>
+                </div>`;
+                return;
+            }
+
+            wrap.innerHTML = stops.map((stop, index) =>
+                `<div class="route-stop-item" draggable="true" data-stop-id="${stop.objectId}">
+                    <div class="route-stop-head">
+                        <span class="route-stop-index">${index + 1}</span>
+                        ${stop.imageUrl
+                            ? `<img src="${esc(stop.imageUrl)}" class="route-stop-thumb" alt="">`
+                            : `<span class="route-stop-placeholder"><i class="bi bi-image"></i></span>`}
+                        <span class="route-drag-handle" title="@Localize("stops.drag")"><i class="bi bi-grip-vertical"></i></span>
+                        <div class="flex-grow-1">
+                            <div class="route-stop-title">${esc(stop.title)}</div>
+                            ${stop.coordsText ? `<div class="route-stop-coords">${stop.coordsText}</div>` : `<div class="route-stop-coords">${esc(i18n.noCoords)}</div>`}
+                        </div>
+                        <button type="button" class="btn btn-sm btn-outline-danger" data-remove-stop="${stop.objectId}" title="${esc(i18n.removeStopTitle)}">
+                            <i class="bi bi-x"></i>
+                        </button>
+                    </div>
+                </div>`
+            ).join('');
+
+            wrap.querySelectorAll('[data-remove-stop]').forEach(btn => {
+                btn.addEventListener('click', async () => {
+                    const objectId = parseInt(btn.getAttribute('data-remove-stop'), 10);
+                    await removeStop(objectId);
+                });
+            });
+
+            initStopDragAndDrop();
+        }
+
+        function initStopDragAndDrop() {
+            const wrap = document.getElementById('routeStopsList');
+            if (!wrap) return;
+
+            const items = [...wrap.querySelectorAll('.route-stop-item[data-stop-id]')];
+            let draggedEl = null;
+
+            items.forEach(item => {
+                item.addEventListener('dragstart', () => {
+                    draggedEl = item;
+                    item.classList.add('dragging');
+                });
+
+                item.addEventListener('dragend', () => {
+                    item.classList.remove('dragging');
+                    wrap.querySelectorAll('.route-stop-item.drag-over').forEach(x => x.classList.remove('drag-over'));
+                    draggedEl = null;
+                });
+
+                item.addEventListener('dragover', (e) => {
+                    e.preventDefault();
+                    if (!draggedEl || draggedEl === item) return;
+                    item.classList.add('drag-over');
+                });
+
+                item.addEventListener('dragleave', () => {
+                    item.classList.remove('drag-over');
+                });
+
+                item.addEventListener('drop', async (e) => {
+                    e.preventDefault();
+                    item.classList.remove('drag-over');
+                    if (!draggedEl || draggedEl === item) return;
+
+                    const fromId = parseInt(draggedEl.dataset.stopId || '', 10);
+                    const toId = parseInt(item.dataset.stopId || '', 10);
+                    if (!fromId || !toId) return;
+
+                    const fromIndex = state.stops.findIndex(s => s.objectId === fromId);
+                    const toIndex = state.stops.findIndex(s => s.objectId === toId);
+                    if (fromIndex < 0 || toIndex < 0 || fromIndex === toIndex) return;
+
+                    const previousStops = [...state.stops];
+                    const [moved] = state.stops.splice(fromIndex, 1);
+                    state.stops.splice(toIndex, 0, moved);
+
+                    const uiStops = buildUiStops();
+                    renderStops(uiStops);
+                    renderMap(uiStops);
+                    try {
+                        await persistStopOrder();
+                    } catch (_) {
+                        state.stops = previousStops;
+                        const rollbackUiStops = buildUiStops();
+                        renderStops(rollbackUiStops);
+                        renderMap(rollbackUiStops);
+                    }
+                });
+            });
+        }
+
+        async function persistStopOrder() {
+            if (!routeConfig.isAuthenticated || !state.routeId || !state.stops.length) return;
+
+            const orderedIds = state.stops.map(s => s.objectId);
+            const res = await fetch(`/RouteBuilder/ReorderStops?routeId=${encodeURIComponent(state.routeId)}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json; charset=UTF-8' },
+                body: JSON.stringify(orderedIds)
+            });
+
+            if (!res.ok) {
+                if (typeof window.showToast === 'function') window.showToast(i18n.orderSaveFailed, 'danger');
+                throw new Error('reorder_failed');
+            }
+
+            const json = await res.json();
+            if (!json?.success) {
+                if (typeof window.showToast === 'function') window.showToast(i18n.orderSaveFailed, 'danger');
+                throw new Error('reorder_failed');
+            }
+
+            await fetchRoute(state.routeId);
+            applyStateToForm();
+
+            if (typeof window.showToast === 'function') window.showToast(i18n.orderSaved, 'success');
+        }
+
+        async function renderMap(stops) {
+            setMapLoading(true);
+            try {
+                markers.forEach(m => map.removeLayer(m));
+                markers.length = 0;
+                if (startMarker) {
+                    map.removeLayer(startMarker);
+                    startMarker = null;
+                }
+                if (endMarker) {
+                    map.removeLayer(endMarker);
+                    endMarker = null;
+                }
+                if (polyline) {
+                    map.removeLayer(polyline);
+                    polyline = null;
+                }
+                if (routeLayer) {
+                    map.removeLayer(routeLayer);
+                    routeLayer = null;
+                }
+
+                if (!stops.length) {
+                    map.setView(defaultCenter, 7);
+                    return;
+                }
+
+                const bounds = [];
+                stops.forEach((stop, index) => {
+                    if (stop.lat == null || stop.lng == null) return;
+                    const marker = L.marker([stop.lat, stop.lng]).addTo(map)
+                        .bindPopup(`${index + 1}. ${esc(stop.title)}`);
+                    markers.push(marker);
+                    bounds.push([stop.lat, stop.lng]);
+                });
+
+                if (state.startLat != null && state.startLng != null) {
+                    startMarker = L.marker([state.startLat, state.startLng], {
+                        icon: L.divIcon({
+                            className: '',
+                            html: '<div style="width:28px;height:28px;border-radius:50%;background:#3B5E3F;color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;border:2px solid #fff;">S</div>',
+                            iconSize: [28, 28],
+                            iconAnchor: [14, 14]
+                        })
+                    }).addTo(map).bindPopup(esc(state.startAddress || 'Start'));
+                    bounds.push([state.startLat, state.startLng]);
+                }
+
+                if (state.endLat != null && state.endLng != null) {
+                    endMarker = L.marker([state.endLat, state.endLng], {
+                        icon: L.divIcon({
+                            className: '',
+                            html: '<div style="width:28px;height:28px;border-radius:50%;background:#C68B2A;color:#111;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;border:2px solid #fff;">F</div>',
+                            iconSize: [28, 28],
+                            iconAnchor: [14, 14]
+                        })
+                    }).addTo(map).bindPopup(esc(state.endAddress || 'Finish'));
+                    bounds.push([state.endLat, state.endLng]);
+                }
+
+                if (!bounds.length) {
+                    map.setView(defaultCenter, 7);
+                    return;
+                }
+
+                if (bounds.length === 1) {
+                    map.setView(bounds[0], 13);
+                } else {
+                    map.fitBounds(bounds, { padding: [24, 24] });
+                }
+
+                const linePoints = stops
+                    .filter(s => s.lat != null && s.lng != null)
+                    .map(s => [s.lat, s.lng]);
+                const routePoints = [];
+                const routePointLabels = [];
+                if (state.startLat != null && state.startLng != null) {
+                    routePoints.push([state.startLat, state.startLng]);
+                    routePointLabels.push(state.startAddress || 'Start');
+                }
+                routePoints.push(...linePoints);
+                routePointLabels.push(...stops.map(s => s.title));
+                if (state.endLat != null && state.endLng != null) {
+                    routePoints.push([state.endLat, state.endLng]);
+                    routePointLabels.push(state.endAddress || 'Finish');
+                }
+
+                if (routePoints.length >= 2) {
+                    const signature = JSON.stringify(routePoints.map(p => [Number(p[0]).toFixed(5), Number(p[1]).toFixed(5)]));
+                    if (signature !== legSignature) {
+                        legSignature = signature;
+                        const built = await buildLegAlternatives(routePoints);
+                        legAlternatives = built.legs;
+                        legSelection = built.selection;
+                    }
+                    renderLegsUi(routePointLabels);
+                    drawSelectedLegs(routePoints);
+                } else {
+                    legAlternatives = [];
+                    legSelection = [];
+                    legSignature = '';
+                    renderLegsUi([]);
+                }
+
+                setTimeout(() => map.invalidateSize(true), 0);
+            } finally {
+                setMapLoading(false);
+            }
+        }
+
+        function esc(s) {
+            if (s == null) return '';
+            return String(s)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;');
+        }
+
+        async function getRoadPolyline(points) {
+            try {
+                const payload = points.map(p => ({ lat: Number(p[0]), lng: Number(p[1]) }));
+                const res = await fetch('/RouteBuilder/BuildRoadPolyline', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json; charset=UTF-8' },
+                    body: JSON.stringify(payload)
+                });
+                if (!res.ok) return null;
+                const json = await res.json();
+                const road = Array.isArray(json?.points) ? json.points : null;
+                if (!json?.success || !road || road.length < 2) return null;
+                return road.map(c => [c.lat, c.lng]);
+            } catch {
+                return null;
+            }
+        }
+
+        async function getRoadAlternatives(from, to) {
+            try {
+                const res = await fetch('/RouteBuilder/BuildRoadAlternatives', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json; charset=UTF-8' },
+                    body: JSON.stringify({
+                        fromLat: Number(from[0]),
+                        fromLng: Number(from[1]),
+                        toLat: Number(to[0]),
+                        toLng: Number(to[1])
+                    })
+                });
+                if (!res.ok) return [];
+                const json = await res.json();
+                return json?.success && Array.isArray(json?.routes) ? json.routes : [];
+            } catch {
+                return [];
+            }
+        }
+
+        async function buildLegAlternatives(routePoints) {
+            const legs = [];
+            const selection = [];
+            for (let i = 0; i < routePoints.length - 1; i++) {
+                const routes = await getRoadAlternatives(routePoints[i], routePoints[i + 1]);
+                if (routes.length > 0) {
+                    legs.push(routes);
+                    selection.push(0);
+                } else {
+                    legs.push([{ points: [{ lat: routePoints[i][0], lng: routePoints[i][1] }, { lat: routePoints[i + 1][0], lng: routePoints[i + 1][1] }] }]);
+                    selection.push(0);
+                    if (!roadRouteWarningShown) {
+                        roadRouteWarningShown = true;
+                        if (typeof window.showToast === 'function') window.showToast(i18n.routeRoadFailed, 'warning');
+                    }
+                }
+            }
+            return { legs, selection };
+        }
+
+        function getLegBaseline(routes) {
+            let bestDistance = Number.POSITIVE_INFINITY;
+            let bestDuration = Number.POSITIVE_INFINITY;
+            routes.forEach(r => {
+                const d = Number(r?.distanceMeters || 0);
+                const t = Number(r?.durationSeconds || 0);
+                if (d > 0 && d < bestDistance) bestDistance = d;
+                if (t > 0 && t < bestDuration) bestDuration = t;
+            });
+            return {
+                bestDistance: Number.isFinite(bestDistance) ? bestDistance : 0,
+                bestDuration: Number.isFinite(bestDuration) ? bestDuration : 0
+            };
+        }
+
+        function buildRouteDeltaText(route, baseline) {
+            const d = Number(route?.distanceMeters || 0);
+            const t = Number(route?.durationSeconds || 0);
+            if (!baseline.bestDistance || !baseline.bestDuration || !d || !t) return '';
+
+            const dd = Math.round((d - baseline.bestDistance) / 100) / 10;
+            const dt = Math.round((t - baseline.bestDuration) / 60);
+            const dText = dd === 0 ? i18n.legDeltaDistanceSame : (dd > 0
+                ? `${i18n.legDeltaDistanceLonger} ${dd.toFixed(1)} ${i18n.km}`
+                : `${i18n.legDeltaDistanceShorter} ${Math.abs(dd).toFixed(1)} ${i18n.km}`);
+            const tText = dt === 0 ? i18n.legDeltaTimeSame : (dt > 0
+                ? `${i18n.legDeltaTimeLonger} ${formatDuration(Math.abs(dt))}`
+                : `${i18n.legDeltaTimeFaster} ${formatDuration(Math.abs(dt))}`);
+            return `${dText}, ${tText}`;
+        }
+
+        function drawSelectedLegs(routePoints) {
+            if (routeLayer) map.removeLayer(routeLayer);
+            routeLayer = L.layerGroup().addTo(map);
+            for (let i = 0; i < legAlternatives.length; i++) {
+                const routes = legAlternatives[i] || [];
+                const selectedIdx = Math.max(0, Math.min((legSelection[i] ?? 0), routes.length - 1));
+                const selected = routes[selectedIdx];
+                const baseline = getLegBaseline(routes);
+
+                routes.forEach((route, ridx) => {
+                    const line = Array.isArray(route?.points)
+                        ? route.points.map(p => [p.lat, p.lng])
+                        : [routePoints[i], routePoints[i + 1]];
+
+                    const isSelected = ridx === selectedIdx;
+                    const glowStyle = isSelected
+                        ? { color: '#f59e0b', weight: 14, opacity: 0.38, lineCap: 'round', lineJoin: 'round' }
+                        : { color: '#000000', weight: 10, opacity: 0.06, lineCap: 'round', lineJoin: 'round' };
+                    const casingStyle = isSelected
+                        ? { color: '#ffffff', weight: 9, opacity: 1, lineCap: 'round', lineJoin: 'round' }
+                        : { color: '#111827', weight: 6, opacity: 0.45, lineCap: 'round', lineJoin: 'round' };
+                    const lineStyle = isSelected
+                        ? { color: '#8B1A2A', weight: 5.5, opacity: 1, lineCap: 'round', lineJoin: 'round' }
+                        : { color: '#6b7280', weight: 3.2, opacity: 0.6, dashArray: '10 7', lineCap: 'round', lineJoin: 'round' };
+
+                    const pickRoute = () => {
+                        legSelection[i] = ridx;
+                        drawSelectedLegs(routePoints);
+                        syncLegSelectUi();
+                    };
+
+                    // Extra-wide invisible hit area to make selecting alternatives easier.
+                    const hitLine = L.polyline(line, {
+                        color: '#000',
+                        weight: isSelected ? 24 : 20,
+                        opacity: 0.01,
+                        lineCap: 'round',
+                        lineJoin: 'round'
+                    }).addTo(routeLayer);
+                    const casing = L.polyline(line, casingStyle).addTo(routeLayer);
+                    const glow = L.polyline(line, glowStyle).addTo(routeLayer);
+                    const poly = L.polyline(line, lineStyle).addTo(routeLayer);
+                    hitLine.on('click', pickRoute);
+                    casing.on('click', pickRoute);
+                    glow.on('click', pickRoute);
+                    poly.on('click', pickRoute);
+
+                    const delta = buildRouteDeltaText(route, baseline);
+                    const tipBase = `${i18n.legTooltipSegment} ${i + 1}, ${i18n.legTooltipOption} ${ridx + 1}`;
+                    const tip = delta ? `${tipBase}: ${delta}` : tipBase;
+                    poly.bindTooltip(tip, {
+                        sticky: true,
+                        direction: 'top',
+                        className: 'route-alt-hint',
+                        offset: [0, -8]
+                    });
+                });
+
+                const selectedLine = Array.isArray(selected?.points)
+                    ? selected.points.map(p => [p.lat, p.lng])
+                    : [routePoints[i], routePoints[i + 1]];
+                const mid = selectedLine[Math.floor(selectedLine.length / 2)] ?? routePoints[i];
+                const segmentIcon = L.divIcon({
+                    className: '',
+                    html: `<div class="route-segment-badge">${i + 1}</div>`,
+                    iconSize: [24, 24],
+                    iconAnchor: [12, 12]
+                });
+                L.marker(mid, { icon: segmentIcon, interactive: false }).addTo(routeLayer);
+            }
+
+            updateRouteMetricsBySelectedLegs(routePoints);
+        }
+
+        function haversineKm(lat1, lng1, lat2, lng2) {
+            const earthRadius = 6371;
+            const toRad = (x) => x * Math.PI / 180;
+            const dLat = toRad(lat2 - lat1);
+            const dLng = toRad(lng2 - lng1);
+            const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+                Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) *
+                Math.sin(dLng / 2) * Math.sin(dLng / 2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+            return earthRadius * c;
+        }
+
+        function updateRouteMetricsBySelectedLegs(routePoints) {
+            if (!Array.isArray(legAlternatives) || !legAlternatives.length) return;
+
+            let totalKm = 0;
+            let totalMinutes = 0;
+            for (let i = 0; i < legAlternatives.length; i++) {
+                const routes = legAlternatives[i] || [];
+                const selected = routes[Math.max(0, Math.min((legSelection[i] ?? 0), routes.length - 1))];
+                const meters = Number(selected?.distanceMeters || 0);
+                const durationSeconds = Number(selected?.durationSeconds || 0);
+                if (meters > 0) {
+                    totalKm += meters / 1000;
+                    if (durationSeconds > 0) {
+                        totalMinutes += durationSeconds / 60;
+                    } else {
+                        totalMinutes += (meters / 1000) / 55 * 60;
+                    }
+                    continue;
+                }
+
+                // Fallback: estimate segment length by straight line if provider didn't return distance.
+                const from = routePoints[i];
+                const to = routePoints[i + 1];
+                if (Array.isArray(from) && Array.isArray(to)) {
+                    const km = haversineKm(Number(from[0]), Number(from[1]), Number(to[0]), Number(to[1]));
+                    totalKm += km;
+                    totalMinutes += km / 55 * 60;
+                }
+            }
+
+            state.totalKm = Number.isFinite(totalKm) && totalKm > 0 ? Number(totalKm.toFixed(1)) : null;
+            state.totalMinutes = Number.isFinite(totalMinutes) && totalMinutes > 0 ? Math.round(totalMinutes) : null;
+            setMetaLine();
+        }
+
+        function renderLegsUi(labels) {
+            const host = document.getElementById('routeLegsList');
+            if (!host) return;
+            if (!legAlternatives.length) {
+                host.innerHTML = `<div class="small text-muted">${esc(i18n.legsEmpty)}</div>`;
+                return;
+            }
+
+            host.innerHTML = legAlternatives.map((routes, idx) => {
+                const fromLabel = labels[idx] || `#${idx + 1}`;
+                const toLabel = labels[idx + 1] || `#${idx + 2}`;
+                const baseline = getLegBaseline(routes);
+                const options = routes.map((r, ridx) => {
+                    const km = Number(r.distanceMeters || 0) > 0 ? `${(Number(r.distanceMeters) / 1000).toFixed(1)} ${i18n.km}` : '—';
+                    const min = Number(r.durationSeconds || 0) > 0 ? formatDuration(Math.round(Number(r.durationSeconds) / 60)) : '—';
+                    const delta = buildRouteDeltaText(r, baseline);
+                    const selected = ridx === (legSelection[idx] ?? 0) ? 'selected' : '';
+                    const suffix = delta ? ` (${delta})` : '';
+                    return `<option value="${ridx}" ${selected}>${i18n.legsOption} ${ridx + 1}: ${km}, ${min}${suffix}</option>`;
+                }).join('');
+                return `<div class="route-leg-item">
+                    <div class="route-leg-title">${esc(fromLabel)} → ${esc(toLabel)}</div>
+                    <select class="form-select form-select-sm" data-leg-select="${idx}">${options}</select>
+                </div>`;
+            }).join('');
+
+            host.querySelectorAll('[data-leg-select]').forEach(select => {
+                select.addEventListener('change', () => {
+                    const idx = Number(select.getAttribute('data-leg-select'));
+                    const val = Number(select.value);
+                    if (!Number.isFinite(idx) || !Number.isFinite(val)) return;
+                    legSelection[idx] = val;
+                    const linePoints = buildUiStops().filter(s => s.lat != null && s.lng != null).map(s => [s.lat, s.lng]);
+                    const routePoints = [];
+                    if (state.startLat != null && state.startLng != null) routePoints.push([state.startLat, state.startLng]);
+                    routePoints.push(...linePoints);
+                    if (state.endLat != null && state.endLng != null) routePoints.push([state.endLat, state.endLng]);
+                    drawSelectedLegs(routePoints);
+                    syncLegSelectUi();
+                });
+            });
+        }
+
+        function syncLegSelectUi() {
+            const host = document.getElementById('routeLegsList');
+            if (!host) return;
+            host.querySelectorAll('[data-leg-select]').forEach(select => {
+                const idx = Number(select.getAttribute('data-leg-select'));
+                if (Number.isFinite(idx) && legSelection[idx] != null) {
+                    select.value = String(legSelection[idx]);
+                }
+            });
+        }
+
+        async function reverseGeocode(lat, lng) {
+            const url = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${encodeURIComponent(lat)}&lon=${encodeURIComponent(lng)}&accept-language=${encodeURIComponent(routeConfig.lang)}`;
+            try {
+                const res = await fetch(url, { headers: { 'Accept': 'application/json' } });
+                if (!res.ok) return null;
+                const json = await res.json();
+                return json?.display_name || null;
+            } catch {
+                return null;
+            }
+        }
+
+        async function geocodeAddress(address) {
+            if (!address) return null;
+            const url = `https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&accept-language=${encodeURIComponent(routeConfig.lang)}&q=${encodeURIComponent(address)}`;
+            try {
+                const res = await fetch(url, { headers: { 'Accept': 'application/json' } });
+                if (!res.ok) return null;
+                const json = await res.json();
+                const item = Array.isArray(json) ? json[0] : null;
+                if (!item) return null;
+                return { lat: Number(item.lat), lng: Number(item.lon), address: item.display_name || address };
+            } catch {
+                return null;
+            }
+        }
+
+        function formatDuration(totalMinutesRaw) {
+            const totalMinutes = Math.max(0, Math.round(Number(totalMinutesRaw) || 0));
+            const days = Math.floor(totalMinutes / 1440);
+            const hours = Math.floor((totalMinutes % 1440) / 60);
+            const minutes = totalMinutes % 60;
+            const parts = [];
+
+            if (days > 0) parts.push(`${days} ${i18n.day}`);
+            if (hours > 0) parts.push(`${hours} ${i18n.hour}`);
+            if (minutes > 0 || parts.length === 0) parts.push(`${minutes} ${i18n.min}`);
+
+            return parts.join(' ');
+        }
+
+        function setMetaLine() {
+            const el = document.getElementById('routeMetaLine');
+            if (!el) return;
+            if (!routeConfig.isAuthenticated) {
+                el.textContent = i18n.guestMode;
+                document.getElementById('kpiStatus')?.replaceChildren(document.createTextNode(i18n.kpiStatusGuest));
+                return;
+            }
+            if (!state.routeId) {
+                el.textContent = i18n.notSaved;
+                document.getElementById('kpiStatus')?.replaceChildren(document.createTextNode(i18n.kpiStatusNew));
+                document.getElementById('kpiKm')?.replaceChildren(document.createTextNode('—'));
+                return;
+            }
+            const kmText = state.totalKm != null ? `${state.totalKm} ${i18n.km}` : '—';
+            const minText = state.totalMinutes != null ? `~${formatDuration(state.totalMinutes)}` : '—';
+            el.textContent = `${i18n.routePrefix} #${state.routeId}\n${i18n.pathLabel}: ${kmText} • ${minText}`;
+            document.getElementById('kpiStatus')?.replaceChildren(document.createTextNode(i18n.kpiStatusSaved));
+            document.getElementById('kpiKm')?.replaceChildren(document.createTextNode(`${kmText}\n${minText}`));
+        }
+
+        function applyStateToForm() {
+            document.getElementById('routeTitleInput').value = state.title || '';
+            document.getElementById('routeDescriptionInput').value = state.description || '';
+            document.getElementById('routeStartAddressInput').value = state.startAddress || '';
+            document.getElementById('routeEndAddressInput').value = state.endAddress || '';
+            const sourceEl = document.getElementById('routeSourceLine');
+            if (sourceEl) {
+                if (state.sourceRouteTitle && state.sourceRouteShareToken) {
+                    sourceEl.innerHTML = `${esc(i18n.sourcePrefix)} <a href="/RouteBuilder/Share?token=${encodeURIComponent(state.sourceRouteShareToken)}" target="_blank" rel="noopener">${esc(state.sourceRouteTitle)}</a>`;
+                } else if (state.sourceRouteTitle) {
+                    sourceEl.textContent = `${i18n.sourceTaken}: ${state.sourceRouteTitle}`;
+                } else {
+                    sourceEl.textContent = '';
+                }
+            }
+            setMetaLine();
+        }
+
+        function buildUiStops() {
+            return (state.stops || []).map(s => {
+                const o = s.object;
+                const title = getNameByLang(o) || `${i18n.objectFallback} #${s.objectId}`;
+                const lat = o?.lat ?? null;
+                const lng = o?.lng ?? null;
+                const coordsText = (lat != null && lng != null) ? `${Number(lat).toFixed(5)}, ${Number(lng).toFixed(5)}` : '';
+                const imageUrl = normalizeImageUrl(o?.mainImageUrl || '');
+                return { objectId: s.objectId, title, lat, lng, coordsText, imageUrl };
+            });
+        }
+
+        async function fetchRoute(routeId) {
+            const res = await fetch(`/RouteBuilder/GetRouteDto?routeId=${encodeURIComponent(routeId)}`, { credentials: 'same-origin' });
+            if (!res.ok) throw new Error('route_fetch_failed');
+            const dto = await res.json();
+            state = {
+                routeId: dto.id,
+                title: dto.title || '',
+                description: dto.description || '',
+                totalKm: dto.totalKm,
+                totalMinutes: null,
+                sourceRouteTitle: dto.sourceRouteTitle || null,
+                sourceRouteShareToken: dto.sourceRouteShareToken || null,
+                startAddress: dto.startAddress || null,
+                startLat: dto.startLat ?? null,
+                startLng: dto.startLng ?? null,
+                endAddress: dto.endAddress || null,
+                endLat: dto.endLat ?? null,
+                endLng: dto.endLng ?? null,
+                stops: (dto.stops || []).map(x => ({
+                    objectId: x.objectId,
+                    sortOrder: x.sortOrder,
+                    notes: x.notes,
+                    object: x.object ? {
+                        id: x.object.id,
+                        slug: x.object.slug,
+                        nameRu: x.object.nameRu,
+                        nameBe: x.object.nameBe,
+                        nameEn: x.object.nameEn,
+                        mainImageUrl: x.object.mainImageUrl,
+                        lat: x.object.lat,
+                        lng: x.object.lng
+                    } : null
+                }))
+            };
+        }
+
+        async function ensureRouteExists() {
+            if (state.routeId) return state.routeId;
+            if (!routeConfig.isAuthenticated) return null;
+
+            const title = document.getElementById('routeTitleInput').value.trim() || i18n.myRoute;
+            const description = document.getElementById('routeDescriptionInput').value.trim() || null;
+
+            const body = new URLSearchParams();
+            body.set('title', title);
+            if (description) body.set('description', description);
+
+            const res = await fetch('/RouteBuilder/CreateRoute', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8' },
+                body
+            });
+            const json = await res.json();
+            if (!json?.success) throw new Error('route_create_failed');
+            state.routeId = json.routeId;
+            await fetchMyRoutes();
+            fillRouteSelect(state.routeId);
+            try { localStorage.setItem('bh_last_route_id', String(state.routeId)); } catch {}
+            return state.routeId;
+        }
+
+        async function addStop(objectId) {
+            if (!routeConfig.isAuthenticated) {
+                if (typeof window.showToast === 'function') {
+                    window.showToast(i18n.guestsAdd, 'warning');
+                }
+                return;
+            }
+
+            const routeId = await ensureRouteExists();
+            if (!routeId) return;
+            await addStopToRoute(routeId, objectId);
+        }
+
+        async function addStopToRoute(routeId, objectId) {
+            const body = new URLSearchParams();
+            body.set('routeId', String(routeId));
+            body.set('objectId', String(objectId));
+
+            const res = await fetch('/RouteBuilder/AddStop', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8' },
+                body
+            });
+            const json = await res.json();
+            if (!json?.success) throw new Error('stop_add_failed');
+
+            await fetchRoute(routeId);
+            applyStateToForm();
+            fillRouteSelect(routeId);
+            const uiStops = buildUiStops();
+            renderStops(uiStops);
+            renderMap(uiStops);
+            if (typeof window.showToast === 'function') window.showToast(i18n.stopAdded, 'success');
+        }
+
+        async function removeStop(objectId) {
+            if (!routeConfig.isAuthenticated || !state.routeId) return;
+            const body = new URLSearchParams();
+            body.set('routeId', String(state.routeId));
+            body.set('objectId', String(objectId));
+
+            const res = await fetch('/RouteBuilder/RemoveStop', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8' },
+                body
+            });
+            const json = await res.json();
+            if (!json?.success) return;
+
+            await fetchRoute(state.routeId);
+            applyStateToForm();
+            const uiStops = buildUiStops();
+            renderStops(uiStops);
+            renderMap(uiStops);
+        }
+
+        async function saveRoute() {
+            if (!routeConfig.isAuthenticated) {
+                if (typeof window.showToast === 'function') {
+                    window.showToast(i18n.guestsSave, 'warning');
+                }
+                return;
+            }
+
+            const title = document.getElementById('routeTitleInput').value.trim();
+            if (!title) {
+                if (typeof window.showToast === 'function') window.showToast(i18n.needTitle, 'danger');
+                return;
+            }
+            const description = document.getElementById('routeDescriptionInput').value.trim() || null;
+            const startAddressInput = document.getElementById('routeStartAddressInput').value.trim();
+            const endAddressInput = document.getElementById('routeEndAddressInput').value.trim();
+
+            if (startAddressInput && (!state.startAddress || state.startAddress !== startAddressInput)) {
+                const startGeo = await geocodeAddress(startAddressInput);
+                if (startGeo) {
+                    state.startAddress = startGeo.address;
+                    state.startLat = startGeo.lat;
+                    state.startLng = startGeo.lng;
+                } else {
+                    state.startAddress = startAddressInput;
+                    if (typeof window.showToast === 'function') window.showToast(i18n.geocodeFailed, 'warning');
+                }
+            } else if (!startAddressInput) {
+                state.startAddress = null;
+                state.startLat = null;
+                state.startLng = null;
+            }
+
+            if (endAddressInput && (!state.endAddress || state.endAddress !== endAddressInput)) {
+                const endGeo = await geocodeAddress(endAddressInput);
+                if (endGeo) {
+                    state.endAddress = endGeo.address;
+                    state.endLat = endGeo.lat;
+                    state.endLng = endGeo.lng;
+                } else {
+                    state.endAddress = endAddressInput;
+                    if (typeof window.showToast === 'function') window.showToast(i18n.geocodeFailed, 'warning');
+                }
+            } else if (!endAddressInput) {
+                state.endAddress = null;
+                state.endLat = null;
+                state.endLng = null;
+            }
+
+            if (!state.routeId) {
+                await ensureRouteExists();
+            }
+
+            const body = new URLSearchParams();
+            body.set('routeId', String(state.routeId));
+            body.set('title', title);
+            if (description) body.set('description', description);
+            body.set('isPublic', 'false');
+            if (state.startAddress) body.set('startAddress', state.startAddress);
+            if (state.startLat != null) body.set('startLat', String(state.startLat));
+            if (state.startLng != null) body.set('startLng', String(state.startLng));
+            if (state.endAddress) body.set('endAddress', state.endAddress);
+            if (state.endLat != null) body.set('endLat', String(state.endLat));
+            if (state.endLng != null) body.set('endLng', String(state.endLng));
+
+            const res = await fetch('/RouteBuilder/UpdateRoute', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8' },
+                body
+            });
+            const json = await res.json();
+            if (json?.success && typeof window.showToast === 'function') {
+                window.showToast(i18n.updated, 'success');
+            }
+            await fetchRoute(state.routeId);
+            applyStateToForm();
+            await renderMap(buildUiStops());
+        }
+
+        async function optimizeRoute() {
+            if (!routeConfig.isAuthenticated) {
+                if (typeof window.showToast === 'function') window.showToast(i18n.guestsSave, 'warning');
+                return;
+            }
+
+            if (!state.routeId) {
+                if (typeof window.showToast === 'function') window.showToast(i18n.optimizeNeedRoute, 'warning');
+                return;
+            }
+
+            const body = new URLSearchParams();
+            body.set('routeId', String(state.routeId));
+            const res = await fetch('/RouteBuilder/OptimizeStops', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8' },
+                body
+            });
+
+            if (!res.ok) {
+                if (typeof window.showToast === 'function') window.showToast(i18n.optimizeFailed, 'danger');
+                return;
+            }
+
+            const json = await res.json();
+            if (!json?.success) {
+                if (typeof window.showToast === 'function') window.showToast(i18n.optimizeFailed, 'warning');
+                return;
+            }
+
+            await fetchRoute(state.routeId);
+            applyStateToForm();
+            const uiStops = buildUiStops();
+            renderStops(uiStops);
+            await renderMap(uiStops);
+            if (typeof window.showToast === 'function') window.showToast(i18n.optimizeDone, 'success');
+        }
+
+        function clearRouteUi() {
+            state.stops = [];
+            renderStops([]);
+            renderMap([]);
+        }
+
+        async function fetchMyRoutes() {
+            if (!routeConfig.isAuthenticated) return [];
+            const res = await fetch('/RouteBuilder/GetMyRoutesLite', { credentials: 'same-origin' });
+            if (!res.ok) return [];
+            userRoutes = await res.json();
+            return userRoutes;
+        }
+
+        function fillRouteSelect(selectedId) {
+            const select = document.getElementById('routeSelect');
+            if (!select) return;
+            const current = selectedId == null ? '' : String(selectedId);
+            const options = [`<option value="">${esc(i18n.fieldRouteNew)}</option>`]
+                .concat((userRoutes || []).map(r => {
+                    const src = r.sourceRouteTitle ? ` • ${esc(i18n.sourceTaken)}: ${esc(r.sourceRouteTitle)}` : '';
+                    return `<option value="${r.id}">${esc(r.title)} (#${r.id})${src}</option>`;
+                }))
+                .join('');
+            select.innerHTML = options;
+            select.value = current;
+        }
+
+        function resetToNewRoute() {
+            state = {
+                routeId: null,
+                title: '',
+                description: '',
+                totalKm: null,
+                totalMinutes: null,
+                sourceRouteTitle: null,
+                sourceRouteShareToken: null,
+                startAddress: null,
+                startLat: null,
+                startLng: null,
+                endAddress: null,
+                endLat: null,
+                endLng: null,
+                stops: []
+            };
+            applyStateToForm();
+            clearRouteUi();
+            fillRouteSelect(null);
+        }
+
+        document.getElementById('clearRouteBtn').addEventListener('click', () => {
+            clearRouteUi();
+        });
+
+        document.getElementById('saveRouteBtn').addEventListener('click', () => {
+            saveRoute();
+        });
+        document.getElementById('optimizeRouteBtn')?.addEventListener('click', () => {
+            optimizeRoute();
+        });
+        document.getElementById('newRouteBtn')?.addEventListener('click', () => {
+            resetToNewRoute();
+        });
+        document.getElementById('pickStartOnMapBtn')?.addEventListener('click', () => {
+            mapPickMode = 'start';
+            if (typeof window.showToast === 'function') window.showToast(i18n.mapPickStart, 'info');
+        });
+        document.getElementById('pickEndOnMapBtn')?.addEventListener('click', () => {
+            mapPickMode = 'end';
+            if (typeof window.showToast === 'function') window.showToast(i18n.mapPickEnd, 'info');
+        });
+        document.getElementById('clearStartBtn')?.addEventListener('click', async () => {
+            state.startAddress = null;
+            state.startLat = null;
+            state.startLng = null;
+            applyStateToForm();
+            await renderMap(buildUiStops());
+        });
+        document.getElementById('clearEndBtn')?.addEventListener('click', async () => {
+            state.endAddress = null;
+            state.endLat = null;
+            state.endLng = null;
+            applyStateToForm();
+            await renderMap(buildUiStops());
+        });
+
+        map.on('click', async (e) => {
+            if (!mapPickMode) return;
+            const lat = Number(e.latlng.lat.toFixed(7));
+            const lng = Number(e.latlng.lng.toFixed(7));
+            const address = await reverseGeocode(lat, lng) || `${lat}, ${lng}`;
+
+            if (mapPickMode === 'start') {
+                state.startLat = lat;
+                state.startLng = lng;
+                state.startAddress = address;
+            } else if (mapPickMode === 'end') {
+                state.endLat = lat;
+                state.endLng = lng;
+                state.endAddress = address;
+            }
+            mapPickMode = null;
+            applyStateToForm();
+            await renderMap(buildUiStops());
+            if (typeof window.showToast === 'function') window.showToast(i18n.mapPickDone, 'success');
+        });
+        document.getElementById('routeSelect')?.addEventListener('change', async (e) => {
+            const v = e.target.value;
+            if (!v) {
+                resetToNewRoute();
+                return;
+            }
+            try {
+                const selectedRouteId = parseInt(v, 10);
+                if (!selectedRouteId) return;
+                await fetchRoute(selectedRouteId);
+                applyStateToForm();
+                const uiStops = buildUiStops();
+                renderStops(uiStops);
+                renderMap(uiStops);
+                try { localStorage.setItem('bh_last_route_id', String(selectedRouteId)); } catch {}
+            } catch {
+                if (typeof window.showToast === 'function') window.showToast(i18n.loadFailed, 'danger');
+            }
+        });
+
+        async function bootstrap() {
+            renderStops([]);
+            renderMap([]);
+            setMetaLine();
+
+            try {
+                if (routeConfig.isAuthenticated) {
+                    await fetchMyRoutes();
+                }
+                if (routeConfig.isAuthenticated && routeConfig.routeId) {
+                    await fetchRoute(routeConfig.routeId);
+                    try { localStorage.setItem('bh_last_route_id', String(routeConfig.routeId)); } catch {}
+                    applyStateToForm();
+                    fillRouteSelect(routeConfig.routeId);
+                    const uiStops = buildUiStops();
+                    renderStops(uiStops);
+                    renderMap(uiStops);
+                } else {
+                    fillRouteSelect(null);
+                }
+
+                if (routeConfig.addObjectId) {
+                    if (routeConfig.routeId) {
+                        await addStop(routeConfig.addObjectId);
+                    } else if ((userRoutes || []).length > 0) {
+                        const chooseExisting = await (window.showConfirmModal?.({
+                            title: i18n.confirmAddTitle,
+                            message: i18n.confirmAddMessage,
+                            confirmText: i18n.confirmChooseExisting,
+                            cancelText: i18n.confirmCreateNew,
+                            confirmClass: 'btn-primary'
+                        }) ?? Promise.resolve(false));
+                        if (chooseExisting) {
+                            const preferred = userRoutes[0]?.id;
+                            if (preferred) {
+                                await addStopToRoute(preferred, routeConfig.addObjectId);
+                            } else {
+                                await addStop(routeConfig.addObjectId);
+                            }
+                        } else {
+                            await addStop(routeConfig.addObjectId);
+                        }
+                    } else {
+                        await addStop(routeConfig.addObjectId);
+                    }
+                    const url = new URL(window.location.href);
+                    url.searchParams.delete('addObject');
+                    window.history.replaceState({}, '', url);
+                }
+            } catch (e) {
+                if (typeof window.showToast === 'function') {
+                    window.showToast(i18n.loadFailed, 'danger');
+                }
+            }
+        }
+
+        bootstrap();
+        window.routeBuilderConfig = routeConfig;
+    })();
+</script>
+}
+
+@functions {
+    private string Localize(string key)
+    {
+        return BelarusHeritage.Localization.UiText.T(Context, $"route.index.{key}");
+    }
+}

@@ -1,0 +1,261 @@
+@model List<BelarusHeritage.Models.Domain.AuditLog>
+@{
+    Layout = "_AdminLayout";
+    Func<string, string> L = key => BelarusHeritage.Localization.UiText.T(Context, $"admin.audit.index.{key}");
+    ViewData["Title"] = L("title");
+    int currentPage = ViewBag.CurrentPage ?? 1;
+    bool hasNextPage = ViewBag.HasNextPage ?? false;
+    string selectedAction = (ViewBag.LogAction as string ?? "").ToLowerInvariant();
+    string EntityLabel(string entity) => entity switch
+    {
+        "Objects" => BelarusHeritage.Localization.UiText.T(Context, "admin.nav.objects"),
+        "Comments" => BelarusHeritage.Localization.UiText.T(Context, "admin.nav.comments"),
+        "Timeline" => BelarusHeritage.Localization.UiText.T(Context, "admin.nav.timeline"),
+        "CatalogData" => BelarusHeritage.Localization.UiText.T(Context, "admin.nav.catalogData"),
+        "Users" => BelarusHeritage.Localization.UiText.T(Context, "admin.nav.users"),
+        "Quizzes" => BelarusHeritage.Localization.UiText.T(Context, "admin.nav.quizzes"),
+        "Settings" => BelarusHeritage.Localization.UiText.T(Context, "admin.nav.social"),
+        "Trash" => BelarusHeritage.Localization.UiText.T(Context, "admin.nav.trash"),
+        _ => entity
+    };
+}
+
+@section Styles {
+<style>
+    .log-action { font-size: .7rem; padding: 2px 8px; border-radius: 4px; font-weight: 500; display: inline-block; }
+    .log-create  { background: #d1fae5; color: #065f46; }
+    .log-update  { background: #dbeafe; color: #1e40af; }
+    .log-delete  { background: #fee2e2; color: #991b1b; }
+    .log-publish { background: #ede9fe; color: #5b21b6; }
+    .log-view    { background: #f3f4f6; color: #374151; }
+    .log-unknown { background: #f3f4f6; color: #6b7280; }
+    .payload-pre { font-size: .75rem; background: #f8fafc; padding: 8px; border-radius: 4px; max-height: 200px; overflow-y: auto; white-space: pre-wrap; word-break: break-all; }
+    .action-filter-bar { display: flex; flex-wrap: wrap; gap: 8px; }
+    .action-filter-btn { font-size: .78rem; }
+    .log-summary { font-size: .8rem; color: #374151; max-width: 360px; }
+</style>
+}
+
+<div class="admin-page-header">
+    <h1 class="admin-page-title">@L("title")</h1>
+    <div class="admin-page-breadcrumb">
+        <a href="/AdminDashboard">@BelarusHeritage.Localization.UiText.T(Context, "admin.nav.dashboard")</a>
+        <span class="sep">/</span>
+        <span>@L("crumb")</span>
+    </div>
+</div>
+
+<!-- Filters -->
+<form method="get" class="admin-card mb-3">
+    <div class="admin-card-body py-3">
+        <div class="mb-3">
+            <div class="text-muted mb-2" style="font-size:.78rem;">@L("actionFilter")</div>
+            <div class="action-filter-bar">
+                <a href="@Url.Action("Index", new { entity = ViewBag.Entity, fromDate = ViewBag.FromDate, toDate = ViewBag.ToDate, page = 1 })"
+                   class="btn btn-sm @(string.IsNullOrEmpty(selectedAction) ? "btn-danger" : "btn-outline-secondary") action-filter-btn">@L("all")</a>
+                <a href="@Url.Action("Index", new { logAction = "view", entity = ViewBag.Entity, fromDate = ViewBag.FromDate, toDate = ViewBag.ToDate, page = 1 })"
+                   class="btn btn-sm @(selectedAction == "view" ? "btn-danger" : "btn-outline-secondary") action-filter-btn">@L("action.view")</a>
+                <a href="@Url.Action("Index", new { logAction = "create", entity = ViewBag.Entity, fromDate = ViewBag.FromDate, toDate = ViewBag.ToDate, page = 1 })"
+                   class="btn btn-sm @(selectedAction == "create" ? "btn-danger" : "btn-outline-secondary") action-filter-btn">@L("action.create")</a>
+                <a href="@Url.Action("Index", new { logAction = "update", entity = ViewBag.Entity, fromDate = ViewBag.FromDate, toDate = ViewBag.ToDate, page = 1 })"
+                   class="btn btn-sm @(selectedAction == "update" ? "btn-danger" : "btn-outline-secondary") action-filter-btn">@L("action.update")</a>
+                <a href="@Url.Action("Index", new { logAction = "delete", entity = ViewBag.Entity, fromDate = ViewBag.FromDate, toDate = ViewBag.ToDate, page = 1 })"
+                   class="btn btn-sm @(selectedAction == "delete" ? "btn-danger" : "btn-outline-secondary") action-filter-btn">@L("action.delete")</a>
+                <a href="@Url.Action("Index", new { logAction = "publish", entity = ViewBag.Entity, fromDate = ViewBag.FromDate, toDate = ViewBag.ToDate, page = 1 })"
+                   class="btn btn-sm @(selectedAction == "publish" ? "btn-danger" : "btn-outline-secondary") action-filter-btn">@L("action.publish")</a>
+            </div>
+        </div>
+        <div class="row g-2 align-items-end">
+            <div class="col-md-2">
+                <input type="text" name="entity" class="form-control form-control-sm"
+                       placeholder="@L("entityPh")" value="@ViewBag.Entity">
+            </div>
+            <div class="col-md-2">
+                <input type="date" name="fromDate" class="form-control form-control-sm"
+                       value="@(ViewBag.FromDate != null ? ((DateTime)ViewBag.FromDate).ToString("yyyy-MM-dd") : "")">
+            </div>
+            <div class="col-md-2">
+                <input type="date" name="toDate" class="form-control form-control-sm"
+                       value="@(ViewBag.ToDate != null ? ((DateTime)ViewBag.ToDate).ToString("yyyy-MM-dd") : "")">
+            </div>
+            <div class="col-auto d-flex gap-2">
+                <input type="hidden" name="logAction" value="@ViewBag.LogAction" />
+                <button type="submit" class="btn btn-sm btn-secondary">@L("btn.apply")</button>
+                <a href="/AdminAuditLog" class="btn btn-sm btn-outline-secondary">@L("btn.reset")</a>
+            </div>
+        </div>
+    </div>
+</form>
+
+<div class="admin-card">
+    <div class="table-responsive">
+        <table class="table admin-table mb-0">
+            <thead>
+                <tr>
+                    <th>@L("col.date")</th>
+                    <th>@L("col.user")</th>
+                    <th>@L("col.action")</th>
+                    <th>@L("col.entity")</th>
+                    <th>@L("col.description")</th>
+                    <th>ID</th>
+                    <th>IP</th>
+                    <th style="width:88px;"></th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var log in Model)
+                {
+                    <tr data-log-id="@log.Id">
+                        <td style="font-size:.8rem; white-space:nowrap;">@log.CreatedAt.ToString("dd.MM.yy HH:mm:ss")</td>
+                        <td style="font-size:.85rem;">@(log.User?.UserName ?? "—")</td>
+                        <td>
+                            <span class="log-action log-@log.Action.ToLowerInvariant()">@log.Action</span>
+                        </td>
+                        <td style="font-size:.85rem; color:#374151;">@EntityLabel(log.Entity)</td>
+                        <td class="log-summary">@BuildSummary(log)</td>
+                        <td style="font-size:.85rem; color:#6b7280;">@(log.EntityId?.ToString() ?? "—")</td>
+                        <td style="font-size:.78rem; color:#9ca3af;">@(log.IpAddress ?? "—")</td>
+                        <td class="text-end">
+                            @if (!string.IsNullOrEmpty(log.Payload))
+                            {
+                                <button class="btn btn-sm btn-outline-secondary btn-icon"
+                                        type="button"
+                                        data-bs-toggle="collapse"
+                                        data-bs-target="#payload_@log.Id">
+                                    <i class="bi bi-code-slash"></i>
+                                </button>
+                            }
+                            <button class="btn btn-sm btn-outline-danger btn-icon"
+                                    type="button"
+                                    onclick="hideLogRow(@log.Id)"
+                                    title="@L("hide")">
+                                <i class="bi bi-eye-slash"></i>
+                            </button>
+                        </td>
+                    </tr>
+                    @if (!string.IsNullOrEmpty(log.Payload))
+                    {
+                        <tr class="collapse" id="payload_@log.Id" data-log-payload-for="@log.Id">
+                            <td colspan="8" style="padding: 0 16px 12px; background: #fafbfd;">
+                                <pre class="payload-pre mb-0">@log.Payload</pre>
+                            </td>
+                        </tr>
+                    }
+                }
+                @if (!Model.Any())
+                {
+                    <tr>
+                        <td colspan="8" class="text-center text-muted py-5">
+                            <i class="bi bi-journal-x" style="font-size:2rem; display:block; margin-bottom:8px;"></i>
+                            @L("empty")
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+
+    @if (currentPage > 1 || hasNextPage)
+    {
+        <div class="admin-card-body pt-0">
+            <nav>
+                <ul class="pagination pagination-sm justify-content-center mb-0">
+                    @if (currentPage > 1)
+                    {
+                        <li class="page-item">
+                            <a class="page-link" href="@Url.Action("Index", new { page = currentPage - 1, userId = ViewBag.UserId, logAction = ViewBag.LogAction, entity = ViewBag.Entity, entityId = ViewBag.EntityId, fromDate = ViewBag.FromDate, toDate = ViewBag.ToDate })">‹</a>
+                        </li>
+                    }
+                    <li class="page-item active">
+                        <span class="page-link">@currentPage</span>
+                    </li>
+                    @if (hasNextPage)
+                    {
+                        <li class="page-item">
+                            <a class="page-link" href="@Url.Action("Index", new { page = currentPage + 1, userId = ViewBag.UserId, logAction = ViewBag.LogAction, entity = ViewBag.Entity, entityId = ViewBag.EntityId, fromDate = ViewBag.FromDate, toDate = ViewBag.ToDate })">›</a>
+                        </li>
+                    }
+                </ul>
+            </nav>
+        </div>
+    }
+</div>
+
+<script>
+const hiddenLogsKey = 'bh_hidden_audit_logs';
+
+function getHiddenLogs() {
+    try {
+        const parsed = JSON.parse(localStorage.getItem(hiddenLogsKey) || '[]');
+        return Array.isArray(parsed) ? parsed : [];
+    } catch {
+        return [];
+    }
+}
+
+function setHiddenLogs(ids) {
+    localStorage.setItem(hiddenLogsKey, JSON.stringify(ids));
+}
+
+function hideLogRow(id) {
+    document.querySelectorAll(`tr[data-log-id="${id}"], tr[data-log-payload-for="${id}"]`).forEach(el => el.remove());
+    const ids = getHiddenLogs();
+    if (!ids.includes(id)) {
+        ids.push(id);
+        setHiddenLogs(ids);
+    }
+}
+
+(function applyHiddenLogs() {
+    const hidden = new Set(getHiddenLogs());
+    hidden.forEach((id) => {
+        document.querySelectorAll(`tr[data-log-id="${id}"], tr[data-log-payload-for="${id}"]`).forEach(el => el.remove());
+    });
+})();
+</script>
+
+@functions {
+    private string BuildSummary(BelarusHeritage.Models.Domain.AuditLog log)
+    {
+        if (string.IsNullOrWhiteSpace(log.Payload))
+            return "—";
+
+        try
+        {
+            using var doc = System.Text.Json.JsonDocument.Parse(log.Payload);
+            var root = doc.RootElement;
+            var actionName = root.TryGetProperty("actionName", out var actionEl)
+                ? actionEl.GetString()
+                : null;
+
+            if (root.TryGetProperty("form", out var formEl) && formEl.ValueKind == System.Text.Json.JsonValueKind.Object)
+            {
+                if (formEl.TryGetProperty("_filesCount", out var filesCountEl))
+                    return $"{actionName ?? BelarusHeritage.Localization.UiText.T(Context, "admin.audit.index.actionFallback")}: {BelarusHeritage.Localization.UiText.T(Context, "admin.audit.index.filesLoaded")} {filesCountEl.GetString()}";
+                if (formEl.TryGetProperty("objectId", out var objectIdEl))
+                    return $"{actionName ?? BelarusHeritage.Localization.UiText.T(Context, "admin.audit.index.actionFallback")}: objectId={objectIdEl.GetString()}";
+                if (formEl.TryGetProperty("id", out var idEl))
+                    return $"{actionName ?? BelarusHeritage.Localization.UiText.T(Context, "admin.audit.index.actionFallback")}: id={idEl.GetString()}";
+            }
+
+            if (root.TryGetProperty("request", out var reqEl) && reqEl.ValueKind == System.Text.Json.JsonValueKind.String)
+            {
+                var req = reqEl.GetString() ?? "";
+                if (!string.IsNullOrWhiteSpace(req))
+                {
+                    if (req.Length > 140) req = req[..140] + "...";
+                    return $"{actionName ?? BelarusHeritage.Localization.UiText.T(Context, "admin.audit.index.actionFallback")}: {req}";
+                }
+            }
+
+            if (!string.IsNullOrWhiteSpace(actionName))
+                return actionName!;
+        }
+        catch
+        {
+            // ignore parse errors
+        }
+
+        return "—";
+    }
+}

@@ -1,0 +1,511 @@
+@model BelarusHeritage.Models.Domain.HeritageObject
+@{
+    Layout = "_AdminLayout";
+    Func<string, string> C = key => BelarusHeritage.Localization.UiText.T(Context, $"admin.objects.create.{key}");
+    Func<string, string> E = key => BelarusHeritage.Localization.UiText.T(Context, $"admin.objects.edit.{key}");
+    ViewData["Title"] = BelarusHeritage.Localization.UiText.T(Context, "admin.objects.edit.title") + ": " + Model.NameRu;
+    var regions = ViewBag.Regions as List<BelarusHeritage.Models.Domain.Region> ?? new();
+    var categories = ViewBag.Categories as List<BelarusHeritage.Models.Domain.Category> ?? new();
+    var archStyles = ViewBag.ArchStyles as List<BelarusHeritage.Models.Domain.ArchStyle> ?? new();
+    var tags = ViewBag.Tags as List<BelarusHeritage.Models.Domain.Tag> ?? new();
+    var images = ViewBag.Images as List<BelarusHeritage.Models.Domain.ObjectImage> ?? new();
+    var selectedTagIds = Model.TagMaps.Select(t => t.TagId).ToHashSet();
+}
+
+@section Styles {
+<style>
+    .tab-nav-admin .nav-link { color: #4a5568; border: none; border-bottom: 2px solid transparent; padding: 9px 16px; font-size: .875rem; font-weight: 500; border-radius: 0; }
+    .tab-nav-admin .nav-link.active { color: #8B1A2A; border-bottom-color: #8B1A2A; background: transparent; }
+    .tab-nav-admin { border-bottom: 1px solid #e5e9f0; }
+    .form-label { font-size: .8rem; font-weight: 600; color: #374151; }
+    .form-section-title { font-size: .75rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: #9ca3af; margin: 20px 0 12px; }
+    .tag-checkbox { display: none; }
+    .tag-label {
+        display: inline-block; padding: 3px 10px; border-radius: 20px; font-size: .75rem;
+        cursor: pointer; border: 1px solid #d1d5db; margin: 2px; background: #fff;
+        transition: all .1s; user-select: none;
+    }
+    .tag-checkbox:checked + .tag-label { background: #8B1A2A; color: #fff; border-color: #8B1A2A; }
+    .quill-wrap { border: 1px solid #dee2e6; border-radius: 6px; overflow: hidden; }
+    .quill-wrap .ql-toolbar { border: none; border-bottom: 1px solid #dee2e6; }
+    .quill-wrap .ql-container { border: none; min-height: 160px; font-size: .9rem; }
+    .img-card { border: 1px solid #e5e9f0; border-radius: 8px; overflow: hidden; }
+    .img-card img { width: 100%; height: 120px; object-fit: cover; }
+    .img-card-body { padding: 8px; font-size: .78rem; }
+    .img-main-badge { background: #3B5E3F; color: #fff; font-size: .65rem; padding: 1px 6px; border-radius: 3px; }
+    .upload-zone {
+        border: 2px dashed #d1d5db; border-radius: 8px; padding: 32px;
+        text-align: center; color: #9ca3af; cursor: pointer; transition: all .2s;
+    }
+    .upload-zone:hover, .upload-zone.drag-over { border-color: #8B1A2A; color: #8B1A2A; background: #fff5f5; }
+</style>
+<link href="https://cdn.jsdelivr.net/npm/quill@2.0.2/dist/quill.snow.css" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css" rel="stylesheet">
+}
+
+<div class="admin-page-header d-flex align-items-center gap-3">
+    <div class="flex-grow-1">
+        <h1 class="admin-page-title">@Model.NameRu</h1>
+        <div class="admin-page-breadcrumb">
+            <a href="/AdminDashboard">@BelarusHeritage.Localization.UiText.T(Context, "admin.nav.dashboard")</a>
+            <span class="sep">/</span>
+            <a href="/AdminObjects">@BelarusHeritage.Localization.UiText.T(Context, "admin.nav.objects")</a>
+            <span class="sep">/</span>
+            <span>@BelarusHeritage.Localization.UiText.T(Context, "admin.objects.edit.title")</span>
+        </div>
+    </div>
+    <a href="/Object/Detail?slug=@Model.Slug" target="_blank" class="btn btn-sm btn-outline-secondary">
+        <i class="bi bi-eye me-1"></i>@BelarusHeritage.Localization.UiText.T(Context, "admin.objects.index.btn.view")
+    </a>
+</div>
+
+<form asp-action="Edit" method="post" id="objectForm">
+    <input asp-for="Id" type="hidden">
+
+    <div class="admin-card">
+        <div class="admin-card-header p-0">
+            <ul class="nav tab-nav-admin">
+                <li class="nav-item"><button type="button" class="nav-link active" data-tab="main">@C("tab.main")</button></li>
+                <li class="nav-item"><button type="button" class="nav-link" data-tab="desc">@C("tab.desc")</button></li>
+                <li class="nav-item"><button type="button" class="nav-link" data-tab="media">@BelarusHeritage.Localization.UiText.T(Context, "admin.objects.edit.media") <span class="badge bg-secondary ms-1" style="font-size:.65rem;">@images.Count</span></button></li>
+                <li class="nav-item"><button type="button" class="nav-link" data-tab="map">@C("tab.map")</button></li>
+                <li class="nav-item"><button type="button" class="nav-link" data-tab="extra">@C("tab.extra")</button></li>
+            </ul>
+        </div>
+
+        <div class="admin-card-body">
+            <!-- TAB: Main -->
+            <div class="tab-pane" id="tab-main">
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <label class="form-label">@C("label.nameRu")</label>
+                        <input asp-for="NameRu" class="form-control" required>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">@C("label.nameBe")</label>
+                        <input asp-for="NameBe" class="form-control">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">@C("label.nameEn")</label>
+                        <input asp-for="NameEn" class="form-control">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">@C("label.slug")</label>
+                        <input asp-for="Slug" class="form-control">
+                        <div class="form-text" style="font-size:.72rem;">@E("hint.slug")</div>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">@C("label.category")</label>
+                        <select asp-for="CategoryId" class="form-select" required>
+                            @foreach (var c in categories)
+                            {
+                                <option value="@c.Id">@c.NameRu</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">@C("label.region")</label>
+                        <select asp-for="RegionId" class="form-select" required>
+                            @foreach (var r in regions)
+                            {
+                                <option value="@r.Id">@r.NameRu</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">@C("label.archStyle")</label>
+                        <select asp-for="ArchStyleId" class="form-select">
+                            <option value="">@C("opt.notSet")</option>
+                            @foreach (var s in archStyles)
+                            {
+                                <option value="@s.Id">@s.NameRu</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label">@C("label.centuryStart")</label>
+                        <input asp-for="CenturyStart" type="number" class="form-control" min="-30" max="21">
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label">@C("label.centuryEnd")</label>
+                        <input asp-for="CenturyEnd" type="number" class="form-control" min="-30" max="21">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">@C("label.buildYear")</label>
+                        <input asp-for="BuildYear" type="number" class="form-control">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">@C("label.preservation")</label>
+                        <select asp-for="PreservationStatus" class="form-select">
+                            <option value="Preserved">@BelarusHeritage.Localization.UiText.T(Context, "catalog.status.preserved")</option>
+                            <option value="Partial">@BelarusHeritage.Localization.UiText.T(Context, "catalog.status.partial")</option>
+                            <option value="Ruins">@BelarusHeritage.Localization.UiText.T(Context, "catalog.status.ruins")</option>
+                            <option value="Lost">@BelarusHeritage.Localization.UiText.T(Context, "catalog.status.lost")</option>
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label">@C("label.heritageCategory")</label>
+                        <select asp-for="HeritageCategory" class="form-select">
+                            <option value="">—</option>
+                            <option value="1">1</option>
+                            <option value="2">2</option>
+                            <option value="3">3</option>
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label">@C("label.heritageYear")</label>
+                        <input asp-for="HeritageYear" type="number" class="form-control">
+                    </div>
+                    <div class="col-md-2 d-flex align-items-end pb-1">
+                        <div class="form-check">
+                            <input asp-for="IsVisitable" class="form-check-input" type="checkbox">
+                            <label class="form-check-label" style="font-size:.8rem;">@C("label.visitable")</label>
+                        </div>
+                    </div>
+                    <div class="col-md-2 d-flex align-items-end pb-1">
+                        <div class="form-check">
+                            <input asp-for="IsFeatured" class="form-check-input" type="checkbox">
+                            <label class="form-check-label" style="font-size:.8rem;">@C("label.featured")</label>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">@C("label.hours")</label>
+                        <input asp-for="VisitingHours" class="form-control">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">@C("label.fee")</label>
+                        <input asp-for="EntryFee" class="form-control">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">@C("label.publishStatus")</label>
+                        <select asp-for="Status" class="form-select">
+                            <option value="Draft">@BelarusHeritage.Localization.UiText.T(Context, "admin.objects.index.status.draft")</option>
+                            <option value="Published">@BelarusHeritage.Localization.UiText.T(Context, "admin.objects.index.status.published")</option>
+                            <option value="Archived">@BelarusHeritage.Localization.UiText.T(Context, "admin.objects.index.status.archived")</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB: Description -->
+            <div class="tab-pane d-none" id="tab-desc">
+                <p class="form-section-title">@C("section.shortDesc")</p>
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <label class="form-label">RU</label>
+                        <textarea asp-for="ShortDescRu" class="form-control" rows="3" maxlength="300"></textarea>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">BE</label>
+                        <textarea asp-for="ShortDescBe" class="form-control" rows="3" maxlength="300"></textarea>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">EN</label>
+                        <textarea asp-for="ShortDescEn" class="form-control" rows="3" maxlength="300"></textarea>
+                    </div>
+                </div>
+
+                <p class="form-section-title">@C("section.fullDesc")</p>
+                <div class="mb-3">
+                    <label class="form-label">@C("label.descRu")</label>
+                    <div class="quill-wrap" id="quill-ru"></div>
+                    <input type="hidden" asp-for="DescriptionRu" id="DescriptionRu">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">@C("label.descEn")</label>
+                    <div class="quill-wrap" id="quill-en"></div>
+                    <input type="hidden" asp-for="DescriptionEn" id="DescriptionEn">
+                </div>
+
+                <p class="form-section-title">@C("section.funFact")</p>
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <label class="form-label">RU</label>
+                        <textarea asp-for="FunFactRu" class="form-control" rows="2" maxlength="500"></textarea>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">BE</label>
+                        <textarea asp-for="FunFactBe" class="form-control" rows="2" maxlength="500"></textarea>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">EN</label>
+                        <textarea asp-for="FunFactEn" class="form-control" rows="2" maxlength="500"></textarea>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB: Media -->
+            <div class="tab-pane d-none" id="tab-media">
+                <div class="upload-zone mb-3" id="uploadZone" onclick="document.getElementById('fileInput').click()">
+                    <i class="bi bi-cloud-upload" style="font-size:2rem; display:block; margin-bottom:8px;"></i>
+                    @E("uploadHint1")<br>
+                    <small>@E("uploadHint2")</small>
+                </div>
+                <input type="file" id="fileInput" multiple accept="image/*" style="display:none" onchange="uploadImages(this.files)">
+
+                <div class="row g-2" id="imagesGrid">
+                    @foreach (var img in images)
+                    {
+                        <div class="col-sm-3 col-md-2" id="imgCard_@img.Id">
+                            <div class="img-card">
+                                @{
+                                    var thumb = !string.IsNullOrWhiteSpace(img.ThumbUrl) ? img.ThumbUrl : img.Url;
+                                    thumb = thumb?.Replace('\\', '/');
+                                    if (!string.IsNullOrWhiteSpace(thumb) && thumb.StartsWith("thumb_uploads/", StringComparison.OrdinalIgnoreCase))
+                                    {
+                                        var rest = thumb.Substring("thumb_uploads/".Length);
+                                        var idx = rest.LastIndexOf('/');
+                                        if (idx >= 0)
+                                        {
+                                            var dir = rest.Substring(0, idx);
+                                            var file = rest.Substring(idx + 1);
+                                            thumb = $"uploads/{dir}/thumb_{file}";
+                                        }
+                                    }
+                                    else if (!string.IsNullOrWhiteSpace(thumb) && thumb.StartsWith("/thumb_uploads/", StringComparison.OrdinalIgnoreCase))
+                                    {
+                                        var rest = thumb.Substring("/thumb_uploads/".Length);
+                                        var idx = rest.LastIndexOf('/');
+                                        if (idx >= 0)
+                                        {
+                                            var dir = rest.Substring(0, idx);
+                                            var file = rest.Substring(idx + 1);
+                                            thumb = $"uploads/{dir}/thumb_{file}";
+                                        }
+                                    }
+                                    if (!string.IsNullOrWhiteSpace(thumb) &&
+                                        !thumb.StartsWith("http://", StringComparison.OrdinalIgnoreCase) &&
+                                        !thumb.StartsWith("https://", StringComparison.OrdinalIgnoreCase) &&
+                                        !thumb.StartsWith("/", StringComparison.Ordinal))
+                                    {
+                                        thumb = "/" + thumb;
+                                    }
+                                }
+                                <img src="@thumb" alt="">
+                                <div class="img-card-body">
+                                    @if (img.IsMain) { <span class="img-main-badge">@E("main")</span> }
+                                    @if (img.Is360) { <span class="badge bg-info ms-1" style="font-size:.6rem;">360°</span> }
+                                    <div class="d-flex gap-1 mt-1">
+                                        @if (!img.IsMain)
+                                        {
+                                            <button type="button" class="btn btn-xs btn-outline-success" style="font-size:.65rem; padding:1px 5px;"
+                                                    onclick="setMain(@img.Id)">@E("main")</button>
+                                        }
+                                        <button type="button" class="btn btn-xs btn-outline-danger ms-auto" style="font-size:.65rem; padding:1px 5px;"
+                                                onclick="deleteImage(@img.Id)">
+                                            <i class="bi bi-x"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+
+            <!-- TAB: Map -->
+            <div class="tab-pane d-none" id="tab-map">
+                <div class="row g-3 mb-3">
+                    <div class="col-md-3">
+                        <label class="form-label">@C("label.lat")</label>
+                        <input type="number" step="0.0000001" class="form-control" id="latInput"
+                               value="@(Model.Location?.Lat.ToString("0.0000000", System.Globalization.CultureInfo.InvariantCulture))">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">@C("label.lng")</label>
+                        <input type="number" step="0.0000001" class="form-control" id="lngInput"
+                               value="@(Model.Location?.Lng.ToString("0.0000000", System.Globalization.CultureInfo.InvariantCulture))">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">@C("label.geocode")</label>
+                        <div class="input-group">
+                            <input type="text" class="form-control" id="geocodeInput" placeholder="@BelarusHeritage.Localization.UiText.T(Context, "admin.objects.edit.geocodePh")">
+                            <button type="button" class="btn btn-outline-secondary" onclick="geocode()">
+                                <i class="bi bi-search"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                <div id="mapContainer" style="height:400px; border-radius:8px; overflow:hidden; border:1px solid #dee2e6;"></div>
+                <div class="row g-3 mt-2">
+                    <div class="col-md-4">
+                        <label class="form-label">@C("label.addrRu")</label>
+                        <input type="text" class="form-control" id="addrRu" value="@Model.Location?.AddressRu">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">@C("label.addrBe")</label>
+                        <input type="text" class="form-control" id="addrBe" value="@Model.Location?.AddressBe">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">@C("label.addrEn")</label>
+                        <input type="text" class="form-control" id="addrEn" value="@Model.Location?.AddressEn">
+                    </div>
+                </div>
+                <input type="hidden" name="Location.Lat" id="locLat" value="@Model.Location?.Lat">
+                <input type="hidden" name="Location.Lng" id="locLng" value="@Model.Location?.Lng">
+                <input type="hidden" name="Location.AddressRu" id="locAddrRu" value="@Model.Location?.AddressRu">
+                <input type="hidden" name="Location.AddressBe" id="locAddrBe" value="@Model.Location?.AddressBe">
+                <input type="hidden" name="Location.AddressEn" id="locAddrEn" value="@Model.Location?.AddressEn">
+            </div>
+
+            <!-- TAB: Extra -->
+            <div class="tab-pane d-none" id="tab-extra">
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label">@C("label.architect")</label>
+                        <input asp-for="Architect" class="form-control">
+                    </div>
+                </div>
+
+                <p class="form-section-title">@C("section.tags")</p>
+                <div>
+                    @foreach (var tag in tags)
+                    {
+                        <input type="checkbox" name="selectedTags" value="@tag.Id"
+                               id="tag_@tag.Id" class="tag-checkbox"
+                               @(selectedTagIds.Contains(tag.Id) ? "checked" : "")>
+                        <label for="tag_@tag.Id" class="tag-label"
+                               style="border-color: @(tag.ColorHex ?? "#d1d5db")">@tag.NameRu</label>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Save bar -->
+    <div class="d-flex gap-2 mt-3">
+        <a href="/Object/Detail?slug=@Model.Slug" target="_blank" class="btn btn-outline-secondary">
+            <i class="bi bi-eye me-1"></i>@BelarusHeritage.Localization.UiText.T(Context, "admin.objects.index.btn.view")
+        </a>
+        <button type="submit" class="btn btn-danger ms-auto">
+            <i class="bi bi-check2 me-1"></i>@BelarusHeritage.Localization.UiText.T(Context, "admin.quizzes.edit.save")
+        </button>
+        <a href="/AdminObjects" class="btn btn-outline-secondary">@BelarusHeritage.Localization.UiText.T(Context, "btn.cancel")</a>
+    </div>
+</form>
+
+@section Scripts {
+<script src="https://cdn.jsdelivr.net/npm/quill@2.0.2/dist/quill.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+    document.querySelectorAll('[data-tab]').forEach(btn => {
+        btn.addEventListener('click', () => {
+            document.querySelectorAll('[data-tab]').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            document.querySelectorAll('.tab-pane').forEach(p => p.classList.add('d-none'));
+            document.getElementById('tab-' + btn.dataset.tab).classList.remove('d-none');
+            if (btn.dataset.tab === 'map') initMap();
+        });
+    });
+
+    const quillRu = new Quill('#quill-ru', { theme: 'snow' });
+    const quillEn = new Quill('#quill-en', { theme: 'snow' });
+    quillRu.root.innerHTML = document.getElementById('DescriptionRu').value || '';
+    quillEn.root.innerHTML = document.getElementById('DescriptionEn').value || '';
+
+    document.getElementById('objectForm').addEventListener('submit', () => {
+        document.getElementById('DescriptionRu').value = quillRu.root.innerHTML;
+        document.getElementById('DescriptionEn').value = quillEn.root.innerHTML;
+        syncLocationFields();
+    });
+
+    let map, marker;
+    function initMap() {
+        if (map) return;
+        const lat = parseFloat(document.getElementById('latInput').value) || 53.7;
+        const lng = parseFloat(document.getElementById('lngInput').value) || 27.9;
+        map = L.map('mapContainer', { attributionControl: false }).setView([lat, lng], lat !== 53.7 ? 14 : 7);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '' }).addTo(map);
+        if (document.getElementById('latInput').value) {
+            marker = L.marker([lat, lng]).addTo(map);
+        }
+        map.on('click', e => setMarker(e.latlng.lat, e.latlng.lng));
+    }
+
+    function setMarker(lat, lng) {
+        if (marker) map.removeLayer(marker);
+        marker = L.marker([lat, lng]).addTo(map);
+        document.getElementById('latInput').value = lat.toFixed(7);
+        document.getElementById('lngInput').value = lng.toFixed(7);
+    }
+
+    async function geocode() {
+        const q = document.getElementById('geocodeInput').value.trim();
+        if (!q) return;
+        const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q)}&limit=1`);
+        const data = await res.json();
+        if (data.length) {
+            const { lat, lon, display_name } = data[0];
+            if (!map) initMap();
+            setMarker(parseFloat(lat), parseFloat(lon));
+            map.setView([lat, lon], 14);
+            if (!document.getElementById('addrRu').value)
+                document.getElementById('addrRu').value = display_name;
+        } else {
+            showToast('@C("js.placeNotFound")', 'danger');
+        }
+    }
+
+    function syncLocationFields() {
+        document.getElementById('locLat').value = document.getElementById('latInput').value;
+        document.getElementById('locLng').value = document.getElementById('lngInput').value;
+        document.getElementById('locAddrRu').value = document.getElementById('addrRu').value;
+        document.getElementById('locAddrBe').value = document.getElementById('addrBe').value;
+        document.getElementById('locAddrEn').value = document.getElementById('addrEn').value;
+    }
+
+    // Upload drag-and-drop
+    const zone = document.getElementById('uploadZone');
+    zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('drag-over'); });
+    zone.addEventListener('dragleave', () => zone.classList.remove('drag-over'));
+    zone.addEventListener('drop', e => {
+        e.preventDefault();
+        zone.classList.remove('drag-over');
+        uploadImages(e.dataTransfer.files);
+    });
+
+    async function uploadImages(files) {
+        const objectId = @Model.Id;
+        for (const file of files) {
+            const fd = new FormData();
+            fd.append('file', file);
+            fd.append('objectId', objectId);
+            const res = await fetch('/AdminObjects/UploadImage', { method: 'POST', body: fd });
+            const json = await res.json();
+            if (json.success) {
+                const col = document.createElement('div');
+                col.className = 'col-sm-3 col-md-2';
+                col.id = 'imgCard_' + json.imageId;
+                col.innerHTML = `<div class="img-card"><img src="${json.thumbUrl}" alt="">
+                    <div class="img-card-body">
+                        <div class="d-flex gap-1 mt-1">
+                            <button type="button" class="btn btn-xs btn-outline-success" style="font-size:.65rem;padding:1px 5px;" onclick="setMain(${json.imageId})">@E("main")</button>
+                            <button type="button" class="btn btn-xs btn-outline-danger ms-auto" style="font-size:.65rem;padding:1px 5px;" onclick="deleteImage(${json.imageId})"><i class="bi bi-x"></i></button>
+                        </div>
+                    </div></div>`;
+                document.getElementById('imagesGrid').appendChild(col);
+            }
+        }
+    }
+
+    async function setMain(imageId) {
+        await fetch('/AdminObjects/SetMainImage', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ imageId, objectId: @Model.Id })
+        });
+        location.reload();
+    }
+
+    async function deleteImage(imageId) {
+        showConfirm('@E("deleteConfirm")', async () => {
+            await fetch('/AdminObjects/DeleteImage', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(imageId)
+            });
+            document.getElementById('imgCard_' + imageId)?.remove();
+        }, '@BelarusHeritage.Localization.UiText.T(Context, "admin.objects.index.btn.delete")');
+    }
+</script>
+}

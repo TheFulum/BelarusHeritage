@@ -1,0 +1,1216 @@
+@model BelarusHeritage.Models.ViewModels.ProfileViewModel
+@{
+    ViewData["Title"] = Localize("title");
+    var lang = BelarusHeritage.Localization.UiText.Lang(Context);
+    var user = Model.User;
+    var displayName = !string.IsNullOrWhiteSpace(user.DisplayName) ? user.DisplayName! : user.UserName ?? user.Email ?? "User";
+    var initial = !string.IsNullOrWhiteSpace(displayName) ? displayName.Trim()[..1].ToUpperInvariant() : "U";
+    var roleClass = user.Role?.ToLowerInvariant() switch
+    {
+        "admin" => "role-admin",
+        "moderator" => "role-moderator",
+        _ => ""
+    };
+    var registeredAt = user.CreatedAt.ToLocalTime().ToString("d MMMM yyyy",
+        System.Globalization.CultureInfo.GetCultureInfo(lang == "be" ? "be-BY" : lang == "en" ? "en-US" : "ru-RU"));
+
+    var statsFav = Model.Favorites.Count;
+    var statsComments = Model.Comments.Count;
+    var statsRatings = Model.Ratings.Count;
+    var statsRoutes = Model.Routes.Count;
+    var statsOrnaments = Model.Ornaments.Count;
+    var statsQuizzes = Model.QuizResults.Count;
+}
+
+@section Styles {
+    <link href="~/css/pages/profile.css" rel="stylesheet">
+}
+
+<section class="profile-page">
+    <div class="container">
+        <div class="profile-layout">
+
+            <!-- ──────────── Sidebar ──────────── -->
+            <aside class="profile-sidebar">
+                <div class="profile-sidebar-card">
+                    <div class="profile-avatar-wrap">
+                        @if (!string.IsNullOrEmpty(user.AvatarUrl))
+                        {
+                            <img id="profileAvatarImg" src="@user.AvatarUrl" alt="@displayName" class="profile-avatar">
+                        }
+                        else
+                        {
+                            <div id="profileAvatarPlaceholder" class="profile-avatar-placeholder">@initial</div>
+                        }
+                        <button type="button" class="avatar-upload-btn"
+                                onclick="document.getElementById('avatarFileInput').click()"
+                                title="@Localize("avatar.change")"
+                                aria-label="@Localize("avatar.change")">
+                            <i class="bi bi-camera-fill"></i>
+                        </button>
+                        <input type="file" id="avatarFileInput" accept="image/*" hidden>
+                    </div>
+
+                    <div class="profile-identity">
+                        <h1 class="profile-name" id="profileNameDisplay">@displayName</h1>
+                        <div class="profile-email">@user.Email</div>
+                        <span class="profile-role-badge @roleClass">
+                            <i class="bi bi-shield-check"></i> @Localize($"role.{user.Role?.ToLowerInvariant() ?? "user"}")
+                        </span>
+                        <div class="profile-meta">
+                            <i class="bi bi-calendar3"></i> @Localize("registered") @registeredAt
+                        </div>
+                    </div>
+                </div>
+
+                <div class="profile-stats">
+                    <div class="profile-stat">
+                        <span class="profile-stat-num">@statsFav</span>
+                        <span class="profile-stat-label">@Localize("stats.favorites")</span>
+                    </div>
+                    <div class="profile-stat">
+                        <span class="profile-stat-num">@statsRatings</span>
+                        <span class="profile-stat-label">@Localize("stats.ratings")</span>
+                    </div>
+                    <div class="profile-stat">
+                        <span class="profile-stat-num">@statsComments</span>
+                        <span class="profile-stat-label">@Localize("stats.comments")</span>
+                    </div>
+                    <div class="profile-stat">
+                        <span class="profile-stat-num">@statsRoutes</span>
+                        <span class="profile-stat-label">@Localize("stats.routes")</span>
+                    </div>
+                    <div class="profile-stat">
+                        <span class="profile-stat-num">@statsOrnaments</span>
+                        <span class="profile-stat-label">@Localize("stats.ornaments")</span>
+                    </div>
+                    <div class="profile-stat">
+                        <span class="profile-stat-num">@statsQuizzes</span>
+                        <span class="profile-stat-label">@Localize("stats.quizzes")</span>
+                    </div>
+                </div>
+            </aside>
+
+            <!-- ──────────── Main column ──────────── -->
+            <div class="profile-main">
+                <ul class="nav profile-tabs-nav" id="profileTabs" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active" id="tab-settings" data-bs-toggle="tab" data-bs-target="#pane-settings" type="button" role="tab">
+                            <i class="bi bi-gear"></i> @Localize("tab.settings")
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="tab-favorites" data-bs-toggle="tab" data-bs-target="#pane-favorites" type="button" role="tab">
+                            <i class="bi bi-heart"></i> @Localize("tab.favorites")
+                            <span class="profile-tab-badge @(statsFav > 0 ? "has-items" : "")">@statsFav</span>
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="tab-comments" data-bs-toggle="tab" data-bs-target="#pane-comments" type="button" role="tab">
+                            <i class="bi bi-chat-left-text"></i> @Localize("tab.comments")
+                            <span class="profile-tab-badge @(statsComments > 0 ? "has-items" : "")">@statsComments</span>
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="tab-ratings" data-bs-toggle="tab" data-bs-target="#pane-ratings" type="button" role="tab">
+                            <i class="bi bi-star"></i> @Localize("tab.ratings")
+                            <span class="profile-tab-badge @(statsRatings > 0 ? "has-items" : "")">@statsRatings</span>
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="tab-routes" data-bs-toggle="tab" data-bs-target="#pane-routes" type="button" role="tab">
+                            <i class="bi bi-signpost-split"></i> @Localize("tab.routes")
+                            <span class="profile-tab-badge @(statsRoutes > 0 ? "has-items" : "")">@statsRoutes</span>
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="tab-ornaments" data-bs-toggle="tab" data-bs-target="#pane-ornaments" type="button" role="tab">
+                            <i class="bi bi-palette"></i> @Localize("tab.ornaments")
+                            <span class="profile-tab-badge @(statsOrnaments > 0 ? "has-items" : "")">@statsOrnaments</span>
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="tab-quizzes" data-bs-toggle="tab" data-bs-target="#pane-quizzes" type="button" role="tab">
+                            <i class="bi bi-puzzle"></i> @Localize("tab.quizzes")
+                            <span class="profile-tab-badge @(statsQuizzes > 0 ? "has-items" : "")">@statsQuizzes</span>
+                        </button>
+                    </li>
+                </ul>
+
+                <div class="profile-content tab-content" id="profileTabContent">
+                    <!-- Settings -->
+                    <div class="tab-pane fade show active profile-tab-pane" id="pane-settings" role="tabpanel" aria-labelledby="tab-settings">
+                        <!-- Profile info -->
+                        <div class="profile-section-card">
+                            <h2 class="profile-section-title">
+                                <i class="bi bi-person-vcard"></i> @Localize("settings.profile")
+                            </h2>
+                            <form id="profileSettingsForm" class="row g-3">
+                                <div class="col-md-6">
+                                    <label for="settingsDisplayName" class="form-label">@Localize("settings.displayName")</label>
+                                    <input type="text" class="form-control" id="settingsDisplayName"
+                                           name="displayName" maxlength="100"
+                                           value="@user.DisplayName" placeholder="@Localize("settings.displayNamePh")">
+                                    <div class="form-text">@Localize("settings.displayNameHint")</div>
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="settingsLang" class="form-label">@Localize("settings.lang")</label>
+                                    <select class="form-select" id="settingsLang" name="preferredLang">
+                                        <option value="ru" selected="@(user.PreferredLang == "ru" ? "selected" : null)">@BelarusHeritage.Localization.UiText.T(Context, "lang.ru")</option>
+                                        <option value="be" selected="@(user.PreferredLang == "be" ? "selected" : null)">@BelarusHeritage.Localization.UiText.T(Context, "lang.be")</option>
+                                        <option value="en" selected="@(user.PreferredLang == "en" ? "selected" : null)">@BelarusHeritage.Localization.UiText.T(Context, "lang.en")</option>
+                                    </select>
+                                    <div class="form-text">@Localize("settings.langHint")</div>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">@Localize("settings.email")</label>
+                                    <input type="email" class="form-control" value="@user.Email" disabled>
+                                    <div class="form-text">@Localize("settings.emailHint")</div>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">@Localize("settings.avatar")</label>
+                                    <div class="d-flex align-items-center gap-3">
+                                        <button type="button" class="btn btn-outline-secondary"
+                                                onclick="document.getElementById('avatarFileInput').click()">
+                                            <i class="bi bi-upload me-1"></i> @Localize("settings.avatarUpload")
+                                        </button>
+                                        <small class="text-muted">@Localize("settings.avatarHint")</small>
+                                    </div>
+                                </div>
+                                <div class="col-12 d-flex justify-content-end gap-2">
+                                    <button type="submit" class="btn btn-primary">
+                                        <i class="bi bi-check-lg me-1"></i> @Localize("settings.save")
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+
+                        <!-- Security -->
+                        <div class="profile-section-card">
+                            <h2 class="profile-section-title">
+                                <i class="bi bi-shield-lock"></i> @Localize("settings.security")
+                            </h2>
+                            <div class="d-flex flex-wrap gap-3 align-items-center justify-content-between">
+                                <div>
+                                    <div class="fw-semibold mb-1">@Localize("settings.password")</div>
+                                    <small class="text-muted">@Localize("settings.passwordHint")</small>
+                                </div>
+                                <button type="button" class="btn btn-outline-primary"
+                                        data-bs-toggle="modal" data-bs-target="#changePasswordModal">
+                                    <i class="bi bi-key me-1"></i> @Localize("settings.changePassword")
+                                </button>
+                            </div>
+                            <hr class="my-3">
+                            <div class="d-flex flex-wrap gap-3 align-items-center justify-content-between">
+                                <div>
+                                    <div class="fw-semibold mb-1">@Localize("settings.session")</div>
+                                    <small class="text-muted">@Localize("settings.sessionHint")</small>
+                                </div>
+                                <a href="@Url.Action("Logout", "Auth")" class="btn btn-outline-secondary">
+                                    <i class="bi bi-box-arrow-right me-1"></i> @Localize("settings.logout")
+                                </a>
+                            </div>
+                        </div>
+
+                        <!-- Danger zone -->
+                        <div class="danger-zone">
+                            <div class="danger-zone-title">
+                                <i class="bi bi-exclamation-triangle"></i> @Localize("settings.danger")
+                            </div>
+                            <div class="d-flex flex-wrap gap-3 align-items-center justify-content-between">
+                                <div>
+                                    <div class="fw-semibold mb-1">@Localize("settings.deleteTitle")</div>
+                                    <small class="text-muted">@Localize("settings.deleteHint")</small>
+                                </div>
+                                <button type="button" class="btn btn-danger"
+                                        data-bs-toggle="modal" data-bs-target="#deleteAccountModal">
+                                    <i class="bi bi-trash me-1"></i> @Localize("settings.deleteBtn")
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Favorites -->
+                    <div class="tab-pane fade profile-tab-pane" id="pane-favorites" role="tabpanel" aria-labelledby="tab-favorites">
+                        @if (!Model.Favorites.Any())
+                        {
+                            <div class="empty-state">
+                                <i class="bi bi-heart empty-state-icon"></i>
+                                <div class="empty-state-title">@Localize("favorites.empty.title")</div>
+                                <p class="text-muted mb-3">@Localize("favorites.empty.text")</p>
+                                <a href="@Url.Action("Index", "Catalog")" class="btn btn-primary">
+                                    <i class="bi bi-compass me-1"></i> @Localize("favorites.empty.cta")
+                                </a>
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="favorites-grid" id="favoritesGrid">
+                                @foreach (var obj in Model.Favorites)
+                                {
+                                    var name = lang == "en" ? obj.NameEn : lang == "be" ? obj.NameBe : obj.NameRu;
+                                    var regionName = obj.Region == null ? "" :
+                                        (lang == "en" ? obj.Region.NameEn : lang == "be" ? obj.Region.NameBe : obj.Region.NameRu);
+                                    var thumb = obj.Images?.FirstOrDefault(i => i.IsMain)?.ThumbUrl
+                                                ?? obj.Images?.FirstOrDefault(i => i.IsMain)?.Url
+                                                ?? obj.MainImageUrl;
+                                    <div class="fav-card" data-fav-id="@obj.Id">
+                                        <button type="button" class="fav-remove-btn"
+                                                onclick="removeFavorite(@obj.Id, this)"
+                                                title="@Localize("favorites.remove")"
+                                                aria-label="@Localize("favorites.remove")">
+                                            <i class="bi bi-x-lg"></i>
+                                        </button>
+                                        <a href="@Url.Action("Detail", "Object", new { slug = obj.Slug })"
+                                           class="text-decoration-none text-reset d-block">
+                                            <div class="fav-card-img">
+                                                @if (!string.IsNullOrEmpty(thumb))
+                                                {
+                                                    <img src="@thumb" alt="@name" loading="lazy">
+                                                }
+                                                else
+                                                {
+                                                    <div class="fav-card-img-placeholder">
+                                                        <i class="bi bi-building"></i>
+                                                    </div>
+                                                }
+                                            </div>
+                                            <div class="fav-card-body">
+                                                <div class="fav-card-title">@name</div>
+                                                @if (!string.IsNullOrEmpty(regionName))
+                                                {
+                                                    <div class="fav-card-region">
+                                                        <i class="bi bi-geo-alt"></i> @regionName
+                                                    </div>
+                                                }
+                                            </div>
+                                        </a>
+                                    </div>
+                                }
+                            </div>
+                            <div class="empty-state d-none" id="favoritesEmpty">
+                                <i class="bi bi-heart empty-state-icon"></i>
+                                <div class="empty-state-title">@Localize("favorites.empty.title")</div>
+                                <p class="text-muted mb-3">@Localize("favorites.empty.text")</p>
+                                <a href="@Url.Action("Index", "Catalog")" class="btn btn-primary">
+                                    <i class="bi bi-compass me-1"></i> @Localize("favorites.empty.cta")
+                                </a>
+                            </div>
+                        }
+                    </div>
+
+                    <!-- Comments -->
+                    <div class="tab-pane fade profile-tab-pane" id="pane-comments" role="tabpanel" aria-labelledby="tab-comments">
+                        @if (!Model.Comments.Any())
+                        {
+                            <div class="empty-state">
+                                <i class="bi bi-chat-left-text empty-state-icon"></i>
+                                <div class="empty-state-title">@Localize("comments.empty.title")</div>
+                                <p class="text-muted">@Localize("comments.empty.text")</p>
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="comments-list" id="commentsList">
+                                @foreach (var c in Model.Comments.OrderByDescending(x => x.Comment.CreatedAt))
+                                {
+                                    var objName = lang == "en" ? c.Object.NameEn : lang == "be" ? c.Object.NameBe : c.Object.NameRu;
+                                    var statusClass = c.Comment.Status switch
+                                    {
+                                        BelarusHeritage.Models.Domain.CommentStatus.Approved => "approved",
+                                        BelarusHeritage.Models.Domain.CommentStatus.Pending => "pending",
+                                        BelarusHeritage.Models.Domain.CommentStatus.Rejected => "rejected",
+                                        BelarusHeritage.Models.Domain.CommentStatus.Spam => "spam",
+                                        _ => "pending"
+                                    };
+                                    var statusLabel = Localize($"comments.status.{statusClass}");
+                                    <div class="comment-row" data-comment-id="@c.Comment.Id">
+                                        <div class="comment-row-head">
+                                            <div class="comment-row-meta">
+                                                <a href="@Url.Action("Detail", "Object", new { slug = c.Object.Slug })" class="comment-row-object">
+                                                    <i class="bi bi-building"></i> @objName
+                                                </a>
+                                                <span class="comment-row-date">
+                                                    <i class="bi bi-clock"></i> @c.Comment.CreatedAt.ToLocalTime().ToString("dd.MM.yyyy HH:mm")
+                                                </span>
+                                                <span class="comment-status-badge @statusClass">@statusLabel</span>
+                                            </div>
+                                            <button type="button" class="btn btn-sm btn-outline-danger comment-delete-btn"
+                                                    onclick="deleteComment(@c.Comment.Id, this)"
+                                                    title="@Localize("comments.delete")">
+                                                <i class="bi bi-trash"></i>
+                                            </button>
+                                        </div>
+                                        <div class="comment-row-body">@c.Comment.Body</div>
+                                    </div>
+                                }
+                            </div>
+                            <div class="empty-state d-none" id="commentsEmpty">
+                                <i class="bi bi-chat-left-text empty-state-icon"></i>
+                                <div class="empty-state-title">@Localize("comments.empty.title")</div>
+                                <p class="text-muted">@Localize("comments.empty.text")</p>
+                            </div>
+                        }
+                    </div>
+
+                    <!-- Ratings -->
+                    <div class="tab-pane fade profile-tab-pane" id="pane-ratings" role="tabpanel" aria-labelledby="tab-ratings">
+                        @if (!Model.Ratings.Any())
+                        {
+                            <div class="empty-state">
+                                <i class="bi bi-star empty-state-icon"></i>
+                                <div class="empty-state-title">@Localize("ratings.empty.title")</div>
+                                <p class="text-muted">@Localize("ratings.empty.text")</p>
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="ratings-list">
+                                @foreach (var r in Model.Ratings.OrderByDescending(x => x.Rating.UpdatedAt))
+                                {
+                                    var objName = lang == "en" ? r.Object.NameEn : lang == "be" ? r.Object.NameBe : r.Object.NameRu;
+                                    var regionName = r.Object.Region == null ? "" :
+                                        (lang == "en" ? r.Object.Region.NameEn : lang == "be" ? r.Object.Region.NameBe : r.Object.Region.NameRu);
+                                    var thumb = r.Object.Images?.FirstOrDefault(i => i.IsMain)?.ThumbUrl
+                                                ?? r.Object.Images?.FirstOrDefault(i => i.IsMain)?.Url
+                                                ?? r.Object.MainImageUrl;
+                                    thumb = NormalizeImageUrl(thumb);
+                                    <div class="rating-item" data-object-id="@r.Object.Id">
+                                        @if (!string.IsNullOrEmpty(thumb))
+                                        {
+                                            <img src="@thumb" alt="@objName" class="rating-item-img" loading="lazy"
+                                                 onerror="this.style.display='none';this.nextElementSibling?.classList.remove('d-none');">
+                                            <div class="rating-item-img-placeholder d-none">
+                                                <i class="bi bi-building"></i>
+                                            </div>
+                                        }
+                                        else
+                                        {
+                                            <div class="rating-item-img-placeholder">
+                                                <i class="bi bi-building"></i>
+                                            </div>
+                                        }
+                                        <div class="flex-grow-1 min-w-0">
+                                            <a href="@Url.Action("Detail", "Object", new { slug = r.Object.Slug })"
+                                               class="rating-item-title text-decoration-none text-reset fw-semibold d-block text-truncate">
+                                                @objName
+                                            </a>
+                                            @if (!string.IsNullOrEmpty(regionName))
+                                            {
+                                                <small class="text-muted">
+                                                    <i class="bi bi-geo-alt"></i> @regionName
+                                                </small>
+                                            }
+                                        </div>
+                                        <div class="rating-stars-edit" data-current="@r.Rating.Value">
+                                            @for (int i = 1; i <= 5; i++)
+                                            {
+                                                var filled = i <= r.Rating.Value;
+                                                <button type="button" class="rating-star-btn @(filled ? "filled" : "")"
+                                                        data-value="@i" aria-label="@i">
+                                                    <i class="bi @(filled ? "bi-star-fill" : "bi-star")"></i>
+                                                </button>
+                                            }
+                                        </div>
+                                        <small class="text-muted text-nowrap d-none d-md-block">
+                                            @r.Rating.UpdatedAt.ToLocalTime().ToString("dd.MM.yyyy")
+                                        </small>
+                                    </div>
+                                }
+                            </div>
+                        }
+                    </div>
+
+                    <!-- Routes -->
+                    <div class="tab-pane fade profile-tab-pane" id="pane-routes" role="tabpanel" aria-labelledby="tab-routes">
+                        @if (!Model.Routes.Any())
+                        {
+                            <div class="empty-state">
+                                <i class="bi bi-signpost-split empty-state-icon"></i>
+                                <div class="empty-state-title">@Localize("routes.empty.title")</div>
+                                <p class="text-muted mb-3">@Localize("routes.empty.text")</p>
+                                <a href="@Url.Action("Index", "RouteBuilder")" class="btn btn-primary">
+                                    <i class="bi bi-plus-circle me-1"></i> @Localize("routes.empty.cta")
+                                </a>
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="d-flex justify-content-end mb-2">
+                                <a href="@Url.Action("Public", "RouteBuilder")" class="btn btn-sm btn-outline-primary">
+                                    <i class="bi bi-globe2 me-1"></i> @Localize("routes.publicList")
+                                </a>
+                            </div>
+                            <div class="routes-list" id="routesList">
+                                @foreach (var route in Model.Routes)
+                                {
+                                    var stopsCount = route.Stops?.Count ?? 0;
+                                    <div class="route-item" data-route-id="@route.Id">
+                                        <div class="route-item-icon">
+                                            <i class="bi bi-signpost-2"></i>
+                                        </div>
+                                        <div class="route-item-info">
+                                            <div class="route-item-title" title="@route.Title">@route.Title</div>
+                                            <div class="route-item-meta">
+                                                <span><i class="bi bi-geo"></i> @stopsCount @PluralStops(stopsCount, lang)</span>
+                                                @if (route.TotalKm.HasValue)
+                                                {
+                                                    <span><i class="bi bi-rulers"></i> @route.TotalKm.Value.ToString("F1") @Localize("routes.km")</span>
+                                                }
+                                                <span><i class="bi bi-clock"></i> @route.UpdatedAt.ToLocalTime().ToString("dd.MM.yyyy")</span>
+                                            </div>
+                                        </div>
+                                        <div class="form-check form-switch route-item-switch m-0" title="@Localize("routes.toggleHint")">
+                                            <input class="form-check-input route-public-toggle"
+                                                   type="checkbox" role="switch"
+                                                   id="routePub-@route.Id"
+                                                   data-route-id="@route.Id"
+                                                   @(route.IsPublic ? "checked" : "")>
+                                            <label class="form-check-label small" for="routePub-@route.Id">
+                                                @Localize("routes.public")
+                                            </label>
+                                        </div>
+                                        <div class="route-item-actions">
+                                            @if (!string.IsNullOrWhiteSpace(route.ShareToken))
+                                            {
+                                                <a href="@Url.Action("Share", "RouteBuilder", new { token = route.ShareToken })"
+                                                   target="_blank"
+                                                   class="btn btn-sm btn-outline-primary route-public-link @(route.IsPublic ? "" : "d-none")"
+                                                   title="@Localize("routes.openPublic")">
+                                                    <i class="bi bi-box-arrow-up-right"></i>
+                                                </a>
+                                            }
+                                            <a href="@Url.Action("Index", "RouteBuilder", new { routeId = route.Id })"
+                                               class="btn btn-sm btn-outline-secondary"
+                                               title="@Localize("routes.edit")">
+                                                <i class="bi bi-pencil"></i>
+                                            </a>
+                                            <button type="button" class="btn btn-sm btn-outline-danger"
+                                                    onclick="deleteRoute(@route.Id, this)"
+                                                    title="@Localize("routes.delete")">
+                                                <i class="bi bi-trash"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                }
+                            </div>
+                            <div class="empty-state d-none" id="routesEmpty">
+                                <i class="bi bi-signpost-split empty-state-icon"></i>
+                                <div class="empty-state-title">@Localize("routes.empty.title")</div>
+                                <p class="text-muted mb-3">@Localize("routes.empty.text")</p>
+                                <a href="@Url.Action("Index", "RouteBuilder")" class="btn btn-primary">
+                                    <i class="bi bi-plus-circle me-1"></i> @Localize("routes.empty.cta")
+                                </a>
+                            </div>
+                        }
+                    </div>
+
+                    <!-- Ornaments -->
+                    <div class="tab-pane fade profile-tab-pane" id="pane-ornaments" role="tabpanel" aria-labelledby="tab-ornaments">
+                        @if (!Model.Ornaments.Any())
+                        {
+                            <div class="empty-state">
+                                <i class="bi bi-palette empty-state-icon"></i>
+                                <div class="empty-state-title">@Localize("ornaments.empty.title")</div>
+                                <p class="text-muted mb-3">@Localize("ornaments.empty.text")</p>
+                                <a href="@Url.Action("Index", "Ornament")" class="btn btn-primary">
+                                    <i class="bi bi-brush me-1"></i> @Localize("ornaments.empty.cta")
+                                </a>
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="ornaments-grid" id="ornamentsGrid">
+                                @foreach (var orn in Model.Ornaments)
+                                {
+                                    var ornTitle = string.IsNullOrWhiteSpace(orn.Title)
+                                        ? orn.CreatedAt.ToLocalTime().ToString("dd.MM.yyyy")
+                                        : orn.Title;
+                                    <div class="ornament-item" data-ornament-id="@orn.Id">
+                                        <div class="ornament-img">
+                                            <img src="@orn.ImageUrl" alt="@ornTitle" loading="lazy">
+                                        </div>
+                                        <div class="ornament-footer">
+                                            <span class="ornament-title" title="@ornTitle">@ornTitle</span>
+                                            <div class="form-check form-switch m-0" title="@Localize("ornaments.toggleHint")">
+                                                <input class="form-check-input ornament-public-toggle"
+                                                       type="checkbox" role="switch"
+                                                       id="ornPub-@orn.Id"
+                                                       data-ornament-id="@orn.Id"
+                                                       @(orn.IsPublic ? "checked" : "")>
+                                            </div>
+                                            <button type="button" class="btn btn-sm btn-link text-danger p-1"
+                                                    onclick="deleteOrnament(@orn.Id, this)"
+                                                    title="@Localize("ornaments.delete")">
+                                                <i class="bi bi-trash"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                }
+                            </div>
+                            <div class="empty-state d-none" id="ornamentsEmpty">
+                                <i class="bi bi-palette empty-state-icon"></i>
+                                <div class="empty-state-title">@Localize("ornaments.empty.title")</div>
+                                <p class="text-muted mb-3">@Localize("ornaments.empty.text")</p>
+                                <a href="@Url.Action("Index", "Ornament")" class="btn btn-primary">
+                                    <i class="bi bi-brush me-1"></i> @Localize("ornaments.empty.cta")
+                                </a>
+                            </div>
+                        }
+                    </div>
+
+                    <!-- Quiz history -->
+                    <div class="tab-pane fade profile-tab-pane" id="pane-quizzes" role="tabpanel" aria-labelledby="tab-quizzes">
+                        @if (!Model.QuizResults.Any())
+                        {
+                            <div class="empty-state">
+                                <i class="bi bi-puzzle empty-state-icon"></i>
+                                <div class="empty-state-title">@Localize("quizzes.empty.title")</div>
+                                <p class="text-muted mb-3">@Localize("quizzes.empty.text")</p>
+                                <a href="@Url.Action("Index", "Quiz")" class="btn btn-primary">
+                                    <i class="bi bi-play-circle me-1"></i> @Localize("quizzes.empty.cta")
+                                </a>
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="table-responsive">
+                                <table class="table profile-quiz-table align-middle">
+                                    <thead>
+                                        <tr>
+                                            <th>@Localize("quizzes.col.quiz")</th>
+                                            <th class="d-none d-md-table-cell">@Localize("quizzes.col.date")</th>
+                                            <th>@Localize("quizzes.col.score")</th>
+                                            <th></th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach (var qr in Model.QuizResults)
+                                        {
+                                            var quiz = qr.Quiz;
+                                            var quizTitle = quiz == null
+                                                ? "—"
+                                                : (lang == "en" ? quiz.TitleEn : lang == "be" ? quiz.TitleBe : quiz.TitleRu);
+                                            var pct = qr.TotalCount > 0 ? (int)Math.Round(qr.CorrectCount * 100.0 / qr.TotalCount) : 0;
+                                            <tr>
+                                                <td>
+                                                    <div class="fw-semibold">@quizTitle</div>
+                                                    @if (quiz != null)
+                                                    {
+                                                        <small class="text-muted">@Localize($"quizzes.type.{quiz.Type.ToString().ToLowerInvariant()}")</small>
+                                                    }
+                                                </td>
+                                                <td class="d-none d-md-table-cell">
+                                                    <span class="text-muted">@qr.CompletedAt.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</span>
+                                                </td>
+                                                <td>
+                                                    <div class="fw-semibold mb-1">@qr.CorrectCount / @qr.TotalCount <small class="text-muted">(@pct%)</small></div>
+                                                    <div class="quiz-score-bar" style="width:140px">
+                                                        <div class="quiz-score-fill" style="width: @pct%"></div>
+                                                    </div>
+                                                </td>
+                                                <td class="text-end">
+                                                    @if (quiz != null)
+                                                    {
+                                                        <a href="@Url.Action("Play", "Quiz", new { slug = quiz.Slug })"
+                                                           class="btn btn-sm btn-outline-primary">
+                                                            <i class="bi bi-arrow-clockwise me-1"></i> @Localize("quizzes.replay")
+                                                        </a>
+                                                    }
+                                                </td>
+                                            </tr>
+                                        }
+                                    </tbody>
+                                </table>
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</section>
+
+<!-- ────────── Modals ────────── -->
+
+<!-- Change password -->
+<div class="modal fade" id="changePasswordModal" tabindex="-1" aria-labelledby="changePasswordModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="changePasswordModalLabel">
+                    <i class="bi bi-key me-2"></i> @Localize("modal.password.title")
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="changePasswordForm">
+                <div class="modal-body">
+                    <div id="changePasswordError" class="alert alert-danger d-none" role="alert"></div>
+                    <div class="mb-3">
+                        <label for="currentPassword" class="form-label">@Localize("modal.password.current")</label>
+                        <input type="password" class="form-control" id="currentPassword" name="currentPassword" required autocomplete="current-password">
+                    </div>
+                    <div class="mb-3">
+                        <label for="newPassword" class="form-label">@Localize("modal.password.new")</label>
+                        <input type="password" class="form-control" id="newPassword" name="newPassword" minlength="6" required autocomplete="new-password">
+                        <div class="form-text">@Localize("modal.password.hint")</div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="confirmPassword" class="form-label">@Localize("modal.password.confirm")</label>
+                        <input type="password" class="form-control" id="confirmPassword" name="confirmPassword" minlength="6" required autocomplete="new-password">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">@Localize("modal.cancel")</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-check-lg me-1"></i> @Localize("modal.password.submit")
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Delete account -->
+<div class="modal fade" id="deleteAccountModal" tabindex="-1" aria-labelledby="deleteAccountModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title text-danger" id="deleteAccountModalLabel">
+                    <i class="bi bi-exclamation-triangle me-2"></i> @Localize("modal.delete.title")
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="deleteAccountForm">
+                <div class="modal-body">
+                    <p class="mb-3">@Localize("modal.delete.text")</p>
+                    <div class="alert alert-warning small mb-3">
+                        <i class="bi bi-info-circle me-1"></i> @Localize("modal.delete.warning")
+                    </div>
+                    <label for="deleteConfirmInput" class="form-label">
+                        @Html.Raw(string.Format(Localize("modal.delete.confirm"), "<code>" + Localize("modal.delete.word") + "</code>"))
+                    </label>
+                    <input type="text" class="form-control" id="deleteConfirmInput"
+                           autocomplete="off" data-confirm-word="@Localize("modal.delete.word")">
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">@Localize("modal.cancel")</button>
+                    <button type="submit" class="btn btn-danger" id="deleteAccountSubmit" disabled>
+                        <i class="bi bi-trash me-1"></i> @Localize("modal.delete.submit")
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        (function () {
+            'use strict';
+
+            // ─── Toast helper (uses #siteToast from _Layout) ────────────────────────
+            const toastEl = document.getElementById('siteToast');
+            const toastBody = document.getElementById('siteToastBody');
+            let toastInstance = null;
+
+            function toast(message, kind) {
+                if (!toastEl || !toastBody) {
+                    if (typeof showNotification === 'function') showNotification(message, kind);
+                    return;
+                }
+                toastEl.classList.remove('bg-success', 'bg-danger', 'bg-warning', 'bg-info');
+                toastEl.classList.add(
+                    kind === 'success' ? 'bg-success' :
+                    kind === 'error'   ? 'bg-danger'  :
+                    kind === 'warning' ? 'bg-warning' : 'bg-info'
+                );
+                toastBody.textContent = message;
+                if (!toastInstance) toastInstance = new bootstrap.Toast(toastEl, { delay: 3500 });
+                toastInstance.show();
+            }
+
+            async function postForm(url, data) {
+                const body = new URLSearchParams(data);
+                const res = await fetch(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body
+                });
+                if (!res.ok) throw new Error('HTTP ' + res.status);
+                return res.json();
+            }
+
+            // ─── Avatar preview + upload ────────────────────────────────────────────
+            const avatarInput = document.getElementById('avatarFileInput');
+            if (avatarInput) {
+                avatarInput.addEventListener('change', async () => {
+                    const file = avatarInput.files && avatarInput.files[0];
+                    if (!file) return;
+
+                    if (file.size > 5 * 1024 * 1024) {
+                        toast('@Localize("js.avatar.tooBig")', 'error');
+                        avatarInput.value = '';
+                        return;
+                    }
+
+                    // Local preview
+                    const objectUrl = URL.createObjectURL(file);
+                    let img = document.getElementById('profileAvatarImg');
+                    if (!img) {
+                        const placeholder = document.getElementById('profileAvatarPlaceholder');
+                        if (placeholder) {
+                            img = document.createElement('img');
+                            img.id = 'profileAvatarImg';
+                            img.className = 'profile-avatar';
+                            img.alt = '';
+                            placeholder.replaceWith(img);
+                        }
+                    }
+                    if (img) img.src = objectUrl;
+
+                    // Upload
+                    try {
+                        const fd = new FormData();
+                        fd.append('avatar', file);
+                        const res = await fetch('/Profile/UploadAvatar', { method: 'POST', body: fd });
+                        const data = await res.json();
+                        if (data.success) {
+                            if (img && data.url) img.src = data.url;
+                            toast('@Localize("js.avatar.ok")', 'success');
+                        } else {
+                            toast(data.error || '@Localize("js.avatar.fail")', 'error');
+                        }
+                    } catch (err) {
+                        console.error(err);
+                        toast('@Localize("js.avatar.fail")', 'error');
+                    } finally {
+                        avatarInput.value = '';
+                    }
+                });
+            }
+
+            // ─── Settings form ──────────────────────────────────────────────────────
+            const settingsForm = document.getElementById('profileSettingsForm');
+            if (settingsForm) {
+                const currentLang = '@lang';
+                settingsForm.addEventListener('submit', async e => {
+                    e.preventDefault();
+                    const submitBtn = settingsForm.querySelector('button[type="submit"]');
+                    const displayName = document.getElementById('settingsDisplayName').value.trim();
+                    const preferredLang = document.getElementById('settingsLang').value;
+
+                    submitBtn.disabled = true;
+                    try {
+                        const data = await postForm('/Profile/UpdateProfile', { displayName, preferredLang });
+                        if (data.success) {
+                            const display = document.getElementById('profileNameDisplay');
+                            if (display && displayName) display.textContent = displayName;
+                            toast('@Localize("js.settings.ok")', 'success');
+                            if (preferredLang && preferredLang !== currentLang) {
+                                setTimeout(() => {
+                                    window.location.href = '/Home/SetLanguage?culture=' + encodeURIComponent(preferredLang);
+                                }, 300);
+                            }
+                        } else {
+                            toast('@Localize("js.settings.fail")', 'error');
+                        }
+                    } catch (err) {
+                        console.error(err);
+                        toast('@Localize("js.settings.fail")', 'error');
+                    } finally {
+                        submitBtn.disabled = false;
+                    }
+                });
+            }
+
+            // ─── Change password modal ──────────────────────────────────────────────
+            const pwForm = document.getElementById('changePasswordForm');
+            if (pwForm) {
+                const pwError = document.getElementById('changePasswordError');
+                pwForm.addEventListener('submit', async e => {
+                    e.preventDefault();
+                    pwError.classList.add('d-none');
+                    pwError.textContent = '';
+
+                    const current = document.getElementById('currentPassword').value;
+                    const next = document.getElementById('newPassword').value;
+                    const confirm = document.getElementById('confirmPassword').value;
+
+                    if (next.length < 6) {
+                        pwError.textContent = '@Localize("js.password.tooShort")';
+                        pwError.classList.remove('d-none');
+                        return;
+                    }
+                    if (next !== confirm) {
+                        pwError.textContent = '@Localize("js.password.mismatch")';
+                        pwError.classList.remove('d-none');
+                        return;
+                    }
+
+                    const submitBtn = pwForm.querySelector('button[type="submit"]');
+                    submitBtn.disabled = true;
+                    try {
+                        const data = await postForm('/Profile/ChangePassword', {
+                            currentPassword: current, newPassword: next
+                        });
+                        if (data.success) {
+                            const modalEl = document.getElementById('changePasswordModal');
+                            bootstrap.Modal.getInstance(modalEl)?.hide();
+                            pwForm.reset();
+                            toast('@Localize("js.password.ok")', 'success');
+                        } else {
+                            pwError.textContent = '@Localize("js.password.fail")';
+                            pwError.classList.remove('d-none');
+                        }
+                    } catch (err) {
+                        console.error(err);
+                        pwError.textContent = '@Localize("js.password.fail")';
+                        pwError.classList.remove('d-none');
+                    } finally {
+                        submitBtn.disabled = false;
+                    }
+                });
+            }
+
+            // ─── Delete account confirm + submit ───────────────────────────────────
+            const delInput = document.getElementById('deleteConfirmInput');
+            const delSubmit = document.getElementById('deleteAccountSubmit');
+            const delForm = document.getElementById('deleteAccountForm');
+            if (delInput && delSubmit && delForm) {
+                const expected = (delInput.dataset.confirmWord || '').trim();
+                delInput.addEventListener('input', () => {
+                    delSubmit.disabled = delInput.value.trim() !== expected;
+                });
+                delForm.addEventListener('submit', async e => {
+                    e.preventDefault();
+                    if (delInput.value.trim() !== expected) return;
+                    delSubmit.disabled = true;
+                    try {
+                        const data = await postForm('/Profile/DeleteAccount', {});
+                        if (data.success) {
+                            toast('@Localize("js.delete.ok")', 'success');
+                            setTimeout(() => { window.location.href = '/Auth/Logout'; }, 1200);
+                        } else {
+                            toast('@Localize("js.delete.fail")', 'error');
+                            delSubmit.disabled = false;
+                        }
+                    } catch (err) {
+                        console.error(err);
+                        toast('@Localize("js.delete.fail")', 'error');
+                        delSubmit.disabled = false;
+                    }
+                });
+                // Reset on modal close
+                document.getElementById('deleteAccountModal')?.addEventListener('hidden.bs.modal', () => {
+                    delInput.value = '';
+                    delSubmit.disabled = true;
+                });
+            }
+
+            // ─── Favorites: remove ──────────────────────────────────────────────────
+            window.removeFavorite = async function (objectId, btn) {
+                const confirmed = await (window.showConfirmModal?.({
+                    title: '@Localize("favorites.remove")',
+                    message: '@Localize("js.favorites.confirm")',
+                    confirmText: '@Localize("favorites.remove")',
+                    cancelText: '@Localize("modal.cancel")',
+                    confirmClass: 'btn-danger'
+                }) ?? Promise.resolve(confirm('@Localize("js.favorites.confirm")')));
+                if (!confirmed) return;
+                const card = btn.closest('.fav-card');
+                if (card) card.style.opacity = '0.5';
+                try {
+                    const data = await postForm('/Profile/RemoveFavorite', { objectId });
+                    if (data.success) {
+                        card?.remove();
+                        toast('@Localize("js.favorites.removed")', 'info');
+                        updateTabBadge('tab-favorites', -1);
+                        updateStat(0, -1);
+                        if (!document.querySelectorAll('#favoritesGrid .fav-card').length) {
+                            document.getElementById('favoritesGrid')?.classList.add('d-none');
+                            document.getElementById('favoritesEmpty')?.classList.remove('d-none');
+                        }
+                    } else {
+                        if (card) card.style.opacity = '';
+                        toast('@Localize("js.error")', 'error');
+                    }
+                } catch (err) {
+                    console.error(err);
+                    if (card) card.style.opacity = '';
+                    toast('@Localize("js.error")', 'error');
+                }
+            };
+
+            // ─── Comments: delete ───────────────────────────────────────────────────
+            window.deleteComment = async function (commentId, btn) {
+                const confirmed = await (window.showConfirmModal?.({
+                    title: '@Localize("comments.delete")',
+                    message: '@Localize("js.comments.confirm")',
+                    confirmText: '@Localize("comments.delete")',
+                    cancelText: '@Localize("modal.cancel")',
+                    confirmClass: 'btn-danger'
+                }) ?? Promise.resolve(confirm('@Localize("js.comments.confirm")')));
+                if (!confirmed) return;
+                const row = btn.closest('.comment-row');
+                row?.classList.add('is-removing');
+                try {
+                    const data = await postForm('/Profile/DeleteComment', { commentId });
+                    if (data.success) {
+                        row?.remove();
+                        toast('@Localize("js.comments.deleted")', 'info');
+                        updateTabBadge('tab-comments', -1);
+                        updateStat(2, -1);
+                        if (!document.querySelectorAll('#commentsList .comment-row').length) {
+                            document.getElementById('commentsList')?.classList.add('d-none');
+                            document.getElementById('commentsEmpty')?.classList.remove('d-none');
+                        }
+                    } else {
+                        row?.classList.remove('is-removing');
+                        toast('@Localize("js.error")', 'error');
+                    }
+                } catch (err) {
+                    console.error(err);
+                    row?.classList.remove('is-removing');
+                    toast('@Localize("js.error")', 'error');
+                }
+            };
+
+            // ─── Ratings: interactive stars ─────────────────────────────────────────
+            document.querySelectorAll('.rating-stars-edit').forEach(group => {
+                const buttons = group.querySelectorAll('.rating-star-btn');
+                const objectId = group.closest('.rating-item')?.dataset.objectId;
+
+                function paint(value, preview) {
+                    buttons.forEach((b, idx) => {
+                        const i = b.querySelector('i');
+                        const filled = idx < value;
+                        b.classList.toggle('filled', filled && !preview);
+                        b.classList.toggle('preview', filled && preview);
+                        i.className = filled ? 'bi bi-star-fill' : 'bi bi-star';
+                    });
+                }
+
+                buttons.forEach((btn, idx) => {
+                    const value = idx + 1;
+                    btn.addEventListener('mouseenter', () => paint(value, true));
+                    btn.addEventListener('mouseleave', () => paint(parseInt(group.dataset.current, 10) || 0, false));
+                    btn.addEventListener('click', async () => {
+                        if (!objectId) return;
+                        buttons.forEach(b => b.disabled = true);
+                        try {
+                            const data = await postForm('/Object/SetRating', { objectId, value });
+                            if (data.success) {
+                                group.dataset.current = value;
+                                paint(value, false);
+                                toast('@Localize("js.ratings.ok")', 'success');
+                            } else {
+                                toast('@Localize("js.error")', 'error');
+                            }
+                        } catch (err) {
+                            console.error(err);
+                            toast('@Localize("js.error")', 'error');
+                        } finally {
+                            buttons.forEach(b => b.disabled = false);
+                        }
+                    });
+                });
+            });
+
+            // ─── Routes: toggle public + delete ─────────────────────────────────────
+            document.querySelectorAll('.route-public-toggle').forEach(input => {
+                input.addEventListener('change', async () => {
+                    const routeId = input.dataset.routeId;
+                    const previous = !input.checked;
+                    input.disabled = true;
+                    try {
+                        const data = await postForm('/Profile/ToggleRoutePublic', { routeId });
+                        if (data.success) {
+                            input.checked = !!data.isPublic;
+                            const routeItem = input.closest('.route-item');
+                            const publicLink = routeItem?.querySelector('.route-public-link');
+                            publicLink?.classList.toggle('d-none', !data.isPublic);
+                            toast(data.isPublic ? '@Localize("js.routes.publicOn")' : '@Localize("js.routes.publicOff")', 'success');
+                        } else {
+                            input.checked = previous;
+                            toast('@Localize("js.error")', 'error');
+                        }
+                    } catch (err) {
+                        console.error(err);
+                        input.checked = previous;
+                        toast('@Localize("js.error")', 'error');
+                    } finally {
+                        input.disabled = false;
+                    }
+                });
+            });
+
+            window.deleteRoute = async function (routeId, btn) {
+                const confirmed = await (window.showConfirmModal?.({
+                    title: '@Localize("routes.delete")',
+                    message: '@Localize("js.routes.confirm")',
+                    confirmText: '@Localize("routes.delete")',
+                    cancelText: '@Localize("modal.cancel")',
+                    confirmClass: 'btn-danger'
+                }) ?? Promise.resolve(confirm('@Localize("js.routes.confirm")')));
+                if (!confirmed) return;
+                const item = btn.closest('.route-item');
+                item?.classList.add('is-removing');
+                try {
+                    const data = await postForm('/Profile/DeleteRoute', { routeId });
+                    if (data.success) {
+                        item?.remove();
+                        toast('@Localize("js.routes.deleted")', 'info');
+                        updateTabBadge('tab-routes', -1);
+                        updateStat(3, -1);
+                        if (!document.querySelectorAll('#routesList .route-item').length) {
+                            document.getElementById('routesList')?.classList.add('d-none');
+                            document.getElementById('routesEmpty')?.classList.remove('d-none');
+                        }
+                    } else {
+                        item?.classList.remove('is-removing');
+                        toast('@Localize("js.error")', 'error');
+                    }
+                } catch (err) {
+                    console.error(err);
+                    item?.classList.remove('is-removing');
+                    toast('@Localize("js.error")', 'error');
+                }
+            };
+
+            // ─── Ornaments: toggle public + delete ──────────────────────────────────
+            document.querySelectorAll('.ornament-public-toggle').forEach(input => {
+                input.addEventListener('change', async () => {
+                    const ornamentId = input.dataset.ornamentId;
+                    const previous = !input.checked;
+                    input.disabled = true;
+                    try {
+                        const data = await postForm('/Profile/ToggleOrnamentPublic', { ornamentId });
+                        if (data.success) {
+                            input.checked = !!data.isPublic;
+                            toast(data.isPublic ? '@Localize("js.ornaments.publicOn")' : '@Localize("js.ornaments.publicOff")', 'success');
+                        } else {
+                            input.checked = previous;
+                            toast('@Localize("js.error")', 'error');
+                        }
+                    } catch (err) {
+                        console.error(err);
+                        input.checked = previous;
+                        toast('@Localize("js.error")', 'error');
+                    } finally {
+                        input.disabled = false;
+                    }
+                });
+            });
+
+            window.deleteOrnament = async function (ornamentId, btn) {
+                const confirmed = await (window.showConfirmModal?.({
+                    title: '@Localize("ornaments.delete")',
+                    message: '@Localize("js.ornaments.confirm")',
+                    confirmText: '@Localize("ornaments.delete")',
+                    cancelText: '@Localize("modal.cancel")',
+                    confirmClass: 'btn-danger'
+                }) ?? Promise.resolve(confirm('@Localize("js.ornaments.confirm")')));
+                if (!confirmed) return;
+                const item = btn.closest('.ornament-item');
+                item?.classList.add('is-removing');
+                try {
+                    const data = await postForm('/Profile/DeleteOrnament', { ornamentId });
+                    if (data.success) {
+                        item?.remove();
+                        toast('@Localize("js.ornaments.deleted")', 'info');
+                        updateTabBadge('tab-ornaments', -1);
+                        updateStat(4, -1);
+                        if (!document.querySelectorAll('#ornamentsGrid .ornament-item').length) {
+                            document.getElementById('ornamentsGrid')?.classList.add('d-none');
+                            document.getElementById('ornamentsEmpty')?.classList.remove('d-none');
+                        }
+                    } else {
+                        item?.classList.remove('is-removing');
+                        toast('@Localize("js.error")', 'error');
+                    }
+                } catch (err) {
+                    console.error(err);
+                    item?.classList.remove('is-removing');
+                    toast('@Localize("js.error")', 'error');
+                }
+            };
+
+            // ─── Helpers ────────────────────────────────────────────────────────────
+            function updateTabBadge(tabId, delta) {
+                const badge = document.querySelector(`#${tabId} .profile-tab-badge`);
+                if (!badge) return;
+                const next = Math.max(0, (parseInt(badge.textContent, 10) || 0) + delta);
+                badge.textContent = next;
+                badge.classList.toggle('has-items', next > 0);
+            }
+
+            function updateStat(index, delta) {
+                // 0=fav, 1=ratings, 2=comments, 3=routes, 4=ornaments, 5=quizzes
+                const num = document.querySelectorAll('.profile-stat-num')[index];
+                if (!num) return;
+                num.textContent = Math.max(0, (parseInt(num.textContent, 10) || 0) + delta);
+            }
+        })();
+    </script>
+}
+
+@functions {
+    private string PluralStops(int n, string lang)
+    {
+        if (lang == "en") return n == 1 ? Localize("routes.stop.one") : Localize("routes.stop.many");
+        if (lang == "be")
+        {
+            var h = n % 100; var m = n % 10;
+            if (h >= 11 && h <= 14) return Localize("routes.stop.many");
+            return m switch { 1 => Localize("routes.stop.one"), 2 or 3 or 4 => Localize("routes.stop.few"), _ => Localize("routes.stop.many") };
+        }
+        var hr = n % 100; var mr = n % 10;
+        if (hr >= 11 && hr <= 14) return Localize("routes.stop.many");
+        return mr switch { 1 => Localize("routes.stop.one"), 2 or 3 or 4 => Localize("routes.stop.few"), _ => Localize("routes.stop.many") };
+    }
+
+    private string Localize(string key)
+    {
+        return BelarusHeritage.Localization.UiText.T(Context, $"profile.{key}");
+    }
+
+    private string NormalizeImageUrl(string? url)
+    {
+        if (string.IsNullOrWhiteSpace(url))
+            return "";
+
+        url = url.Replace('\\', '/');
+
+        if (url.StartsWith("thumb_uploads/", StringComparison.OrdinalIgnoreCase))
+        {
+            var rest = url.Substring("thumb_uploads/".Length);
+            var idx = rest.LastIndexOf('/');
+            if (idx >= 0)
+            {
+                var dir = rest.Substring(0, idx);
+                var file = rest.Substring(idx + 1);
+                url = $"uploads/{dir}/thumb_{file}";
+            }
+        }
+        else if (url.StartsWith("/thumb_uploads/", StringComparison.OrdinalIgnoreCase))
+        {
+            var rest = url.Substring("/thumb_uploads/".Length);
+            var idx = rest.LastIndexOf('/');
+            if (idx >= 0)
+            {
+                var dir = rest.Substring(0, idx);
+                var file = rest.Substring(idx + 1);
+                url = $"uploads/{dir}/thumb_{file}";
+            }
+        }
+
+        if (url.StartsWith("http://", StringComparison.OrdinalIgnoreCase) ||
+            url.StartsWith("https://", StringComparison.OrdinalIgnoreCase) ||
+            url.StartsWith("/", StringComparison.Ordinal))
+            return url;
+
+        return "/" + url;
+    }
+}

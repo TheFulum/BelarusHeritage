@@ -1,0 +1,331 @@
+@model BelarusHeritage.Models.ViewModels.TimelineViewModel
+@{
+    var lang = BelarusHeritage.Localization.UiText.Lang(Context);
+    ViewData["Title"] = BelarusHeritage.Localization.UiText.T(Context, "timeline.title");
+    string TitleOf(BelarusHeritage.Models.Domain.TimelineEvent e)
+        => lang == "en" ? e.TitleEn : lang == "be" ? e.TitleBe : e.TitleRu;
+    string BodyOf(BelarusHeritage.Models.Domain.TimelineEvent e)
+        => (lang == "en" ? e.BodyEn : e.BodyRu) ?? "";
+
+    string YearLabel(short y) => y < 0
+        ? BelarusHeritage.Localization.UiText.T(Context, "timeline.year.bc").Replace("{0}", (-y).ToString())
+        : y.ToString();
+
+    string GetEpoch(short y) => y switch {
+        < 0         => "ancient",
+        < 1385      => "gkl",
+        < 1569      => "gkl",
+        < 1795      => "rp",
+        < 1917      => "empire",
+        < 1991      => "bssr",
+        _           => "rb"
+    };
+
+    string EpochLabel(string epoch) => BelarusHeritage.Localization.UiText.T(Context, $"timeline.epoch.{epoch}");
+
+    var sortedYears = Model.EventsByYear.OrderBy(g => g.Key).ToList();
+    var presentEpochs = sortedYears.Select(g => GetEpoch(g.Key)).Distinct().ToList();
+}
+
+@section Styles {
+<style>
+    /* ── Page ── */
+    .tl-page { padding-bottom: var(--space-xxl); }
+
+    /* ── Hero ── */
+    .tl-hero {
+        background: linear-gradient(135deg, #1a1a2e 0%, #2d1b33 40%, #8B1A2A 100%);
+        padding: 60px 0 48px;
+        text-align: center;
+        position: relative;
+        overflow: hidden;
+    }
+    .tl-hero::before {
+        content: '';
+        position: absolute; inset: 0;
+        background: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.03'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+    }
+    .tl-hero-title {
+        font-family: 'Cormorant Garamond', serif;
+        font-size: clamp(2rem, 5vw, 3.5rem);
+        font-weight: 700;
+        color: #fff;
+        margin-bottom: 8px;
+        position: relative;
+    }
+    .tl-hero-subtitle {
+        font-size: .95rem;
+        color: rgba(255,255,255,.65);
+        margin-bottom: 28px;
+        position: relative;
+    }
+
+    /* Epoch nav pills */
+    .tl-epoch-nav { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; position: relative; }
+    .tl-epoch-pill {
+        padding: 5px 16px;
+        border-radius: 20px;
+        font-size: .78rem;
+        font-weight: 500;
+        border: 1.5px solid rgba(255,255,255,.35);
+        color: rgba(255,255,255,.85);
+        text-decoration: none;
+        transition: all .2s;
+        cursor: pointer;
+        background: rgba(255,255,255,.08);
+    }
+    .tl-epoch-pill:hover { background: rgba(255,255,255,.2); color: #fff; border-color: rgba(255,255,255,.6); }
+
+    /* ── Timeline container ── */
+    .tl-container {
+        position: relative;
+        max-width: 900px;
+        margin: 0 auto;
+        padding: 40px 20px 0;
+    }
+
+    /* Center line */
+    .tl-container::before {
+        content: '';
+        position: absolute;
+        left: 50%;
+        top: 0; bottom: 0;
+        width: 2px;
+        background: linear-gradient(to bottom, transparent, #C68B2A 60px, #C68B2A calc(100% - 60px), transparent);
+        transform: translateX(-50%);
+    }
+
+    /* ── Epoch divider ── */
+    .tl-epoch {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        position: relative;
+        margin: 48px 0 32px;
+        z-index: 2;
+    }
+    .tl-epoch-label {
+        background: linear-gradient(135deg, #8B1A2A, #C68B2A);
+        color: #fff;
+        font-family: 'Cormorant Garamond', serif;
+        font-size: 1rem;
+        font-weight: 600;
+        padding: 6px 24px;
+        border-radius: 20px;
+        letter-spacing: .05em;
+        box-shadow: 0 2px 10px rgba(139,26,42,.3);
+    }
+
+    /* ── Year marker ── */
+    .tl-year-marker {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        position: relative;
+        margin: 32px 0 4px;
+        z-index: 2;
+    }
+    .tl-year-badge {
+        background: #fff;
+        border: 2px solid #C68B2A;
+        color: #8B1A2A;
+        font-family: 'Cormorant Garamond', serif;
+        font-size: 1.15rem;
+        font-weight: 700;
+        padding: 3px 18px;
+        border-radius: 20px;
+        min-width: 80px;
+        text-align: center;
+    }
+
+    /* ── Event row ── */
+    .tl-row {
+        display: grid;
+        grid-template-columns: 1fr 48px 1fr;
+        align-items: start;
+        margin-bottom: 20px;
+        position: relative;
+    }
+
+    /* Connector dot */
+    .tl-dot {
+        width: 14px; height: 14px;
+        background: #C68B2A;
+        border: 3px solid #fff;
+        border-radius: 50%;
+        box-shadow: 0 0 0 2px #C68B2A;
+        margin: 20px auto 0;
+        flex-shrink: 0;
+        position: relative;
+        z-index: 2;
+    }
+
+    /* Card */
+    .tl-card {
+        background: #fff;
+        border-radius: 10px;
+        box-shadow: 0 2px 12px rgba(0,0,0,.08);
+        overflow: hidden;
+        transition: box-shadow .25s, transform .25s;
+    }
+    .tl-card:hover { box-shadow: 0 6px 24px rgba(0,0,0,.13); transform: translateY(-2px); }
+
+    .tl-card-img { width: 100%; height: 160px; object-fit: cover; display: block; }
+
+    .tl-card-body { padding: 14px 16px 16px; }
+    .tl-card-title {
+        font-family: 'Cormorant Garamond', serif;
+        font-size: 1.05rem;
+        font-weight: 600;
+        color: #1a202c;
+        margin-bottom: 6px;
+        line-height: 1.3;
+    }
+    .tl-card-text { font-size: .82rem; color: #6b7280; line-height: 1.55; margin-bottom: 10px; }
+    .tl-card-link {
+        font-size: .78rem;
+        font-weight: 600;
+        color: #8B1A2A;
+        text-decoration: none;
+    }
+    .tl-card-link:hover { text-decoration: underline; }
+
+    /* Left/right alignment */
+    .tl-row.left .tl-card  { margin-right: 16px; }
+    .tl-row.left .tl-empty { }
+    .tl-row.right .tl-card { margin-left: 16px; grid-column: 3; }
+    .tl-row.right .tl-empty { grid-column: 1; }
+    .tl-row.right .tl-dot  { grid-column: 2; }
+
+    /* Mobile: single column */
+    @@media (max-width: 640px) {
+        .tl-container::before { left: 20px; transform: none; }
+        .tl-row { grid-template-columns: 40px 1fr; gap: 0; }
+        .tl-dot  { grid-column: 1; margin: 16px 0 0 13px; }
+        .tl-row.left .tl-card,
+        .tl-row.right .tl-card { grid-column: 2; margin-left: 8px; margin-right: 0; }
+        .tl-row.right .tl-empty,
+        .tl-row.left .tl-empty { display: none; }
+        .tl-year-marker,
+        .tl-epoch { justify-content: flex-start; padding-left: 48px; }
+    }
+</style>
+}
+
+<!-- Hero -->
+<div class="tl-hero">
+    <div class="container">
+        <h1 class="tl-hero-title">@BelarusHeritage.Localization.UiText.T(Context, "timeline.title")</h1>
+        <p class="tl-hero-subtitle">@BelarusHeritage.Localization.UiText.T(Context, "timeline.subtitle")</p>
+        @if (presentEpochs.Any())
+        {
+            <div class="tl-epoch-nav">
+                @foreach (var ep in presentEpochs)
+                {
+                    <a class="tl-epoch-pill" href="#epoch-@ep">@EpochLabel(ep)</a>
+                }
+            </div>
+        }
+    </div>
+</div>
+
+<!-- Timeline -->
+<div class="tl-page">
+    <div class="tl-container">
+
+        @if (!sortedYears.Any())
+        {
+            <div class="text-center text-muted py-5">
+                <i class="bi bi-clock-history" style="font-size:2.5rem; display:block; margin-bottom:12px;"></i>
+                @BelarusHeritage.Localization.UiText.T(Context, "timeline.empty")
+            </div>
+        }
+        else
+        {
+            var prevEpoch = "";
+            var cardIndex = 0;
+
+            foreach (var yearGroup in sortedYears)
+            {
+                var year = yearGroup.Key;
+                var epoch = GetEpoch(year);
+
+                @* Epoch divider *@
+                if (epoch != prevEpoch)
+                {
+                    prevEpoch = epoch;
+                    <div class="tl-epoch" id="epoch-@epoch">
+                        <span class="tl-epoch-label">@EpochLabel(epoch)</span>
+                    </div>
+                }
+
+                @* Year marker *@
+                <div class="tl-year-marker">
+                    <span class="tl-year-badge">@YearLabel(year)</span>
+                </div>
+
+                @* Events for this year *@
+                foreach (var evt in yearGroup.Value)
+                {
+                    var isLeft = cardIndex % 2 == 0;
+                    var sideClass = isLeft ? "left" : "right";
+                    cardIndex++;
+
+                    <div class="tl-row @sideClass" data-aos="fade-up" data-aos-delay="@(cardIndex * 50 > 300 ? 0 : cardIndex * 50)">
+                        @if (isLeft)
+                        {
+                            <div class="tl-card">
+                                @if (!string.IsNullOrEmpty(evt.ImageUrl))
+                                {
+                                    <img src="@evt.ImageUrl" class="tl-card-img" alt="@TitleOf(evt)" loading="lazy">
+                                }
+                                <div class="tl-card-body">
+                                    <div class="tl-card-title">@TitleOf(evt)</div>
+                                    @if (!string.IsNullOrEmpty(BodyOf(evt)))
+                                    {
+                                        <div class="tl-card-text">@BodyOf(evt)</div>
+                                    }
+                                    @if (evt.Object != null)
+                                    {
+                                        <a href="/Object/Detail?slug=@evt.Object.Slug" class="tl-card-link">
+                                            @BelarusHeritage.Localization.UiText.T(Context, "timeline.viewObject") →
+                                        </a>
+                                    }
+                                </div>
+                            </div>
+                            <div class="tl-dot"></div>
+                            <div class="tl-empty"></div>
+                        }
+                        else
+                        {
+                            <div class="tl-empty"></div>
+                            <div class="tl-dot"></div>
+                            <div class="tl-card">
+                                @if (!string.IsNullOrEmpty(evt.ImageUrl))
+                                {
+                                    <img src="@evt.ImageUrl" class="tl-card-img" alt="@TitleOf(evt)" loading="lazy">
+                                }
+                                <div class="tl-card-body">
+                                    <div class="tl-card-title">@TitleOf(evt)</div>
+                                    @if (!string.IsNullOrEmpty(BodyOf(evt)))
+                                    {
+                                        <div class="tl-card-text">@BodyOf(evt)</div>
+                                    }
+                                    @if (evt.Object != null)
+                                    {
+                                        <a href="/Object/Detail?slug=@evt.Object.Slug" class="tl-card-link">
+                                            @BelarusHeritage.Localization.UiText.T(Context, "timeline.viewObject") →
+                                        </a>
+                                    }
+                                </div>
+                            </div>
+                        }
+                    </div>
+                }
+            }
+        }
+
+    </div>
+</div>
+
+@* localization is centralized in BelarusHeritage.Localization.UiText *@

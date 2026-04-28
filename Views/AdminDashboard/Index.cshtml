@@ -1,0 +1,266 @@
+@model BelarusHeritage.Models.ViewModels.AdminDashboardViewModel
+@{
+    Layout = "_AdminLayout";
+    ViewData["Title"] = BelarusHeritage.Localization.UiText.T(Context, "admin.nav.dashboard");
+    string L(string key) => BelarusHeritage.Localization.UiText.T(Context, $"admin.dashboard.index.{key}");
+}
+
+@section Styles {
+    <style>
+        .stat-card-icon.icon-objects  { background: rgba(139,26,42,.1);  color: #8B1A2A; }
+        .stat-card-icon.icon-users    { background: rgba(59,94,63,.1);   color: #3B5E3F; }
+        .stat-card-icon.icon-comments { background: rgba(198,139,42,.1); color: #C68B2A; }
+        .stat-card-icon.icon-timeline { background: rgba(59,130,246,.1); color: #3b82f6; }
+        .chart-wrap { position: relative; height: 260px; }
+        .log-action { font-size: .7rem; padding: 2px 8px; border-radius: 4px; font-weight: 500; }
+        .log-create  { background: #d1fae5; color: #065f46; }
+        .log-update  { background: #dbeafe; color: #1e40af; }
+        .log-delete  { background: #fee2e2; color: #991b1b; }
+        .log-publish { background: #ede9fe; color: #5b21b6; }
+    </style>
+}
+
+<div class="admin-page-header">
+    <h1 class="admin-page-title">@BelarusHeritage.Localization.UiText.T(Context, "admin.nav.dashboard")</h1>
+    <div class="admin-page-breadcrumb">
+        <span>@L("home")</span>
+    </div>
+    <div class="mt-2 d-flex align-items-center gap-2">
+        <span class="text-muted small">@L("lang"):</span>
+        <a href="@Url.Action("SetLanguage", "Home", new { culture = "ru" })" class="btn btn-sm btn-outline-secondary @(BelarusHeritage.Localization.UiText.Is(Context, "ru") ? "active" : "")">@BelarusHeritage.Localization.UiText.T(Context, "lang.ru")</a>
+        <a href="@Url.Action("SetLanguage", "Home", new { culture = "be" })" class="btn btn-sm btn-outline-secondary @(BelarusHeritage.Localization.UiText.Is(Context, "be") ? "active" : "")">@BelarusHeritage.Localization.UiText.T(Context, "lang.be")</a>
+        <a href="@Url.Action("SetLanguage", "Home", new { culture = "en" })" class="btn btn-sm btn-outline-secondary @(BelarusHeritage.Localization.UiText.Is(Context, "en") ? "active" : "")">@BelarusHeritage.Localization.UiText.T(Context, "lang.en")</a>
+    </div>
+</div>
+
+<!-- Stat cards -->
+<div class="row g-3 mb-4">
+    <div class="col-sm-6 col-xl-3">
+        <div class="stat-card h-100">
+            <div class="stat-card-icon icon-objects">
+                <i class="bi bi-building"></i>
+            </div>
+            <div>
+                <div class="stat-card-value">@Model.TotalObjects</div>
+                <div class="stat-card-label">@L("objectsTotal")</div>
+                <div style="font-size:.72rem; margin-top:2px; color:#6b7280;">
+                    @L("short.published"): <strong>@Model.PublishedObjects</strong> &nbsp;·&nbsp;
+                    @L("short.draft"): <strong>@Model.DraftObjects</strong> &nbsp;·&nbsp;
+                    @L("short.deleted"): <strong>@Model.DeletedObjects</strong>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-sm-6 col-xl-3">
+        <div class="stat-card h-100">
+            <div class="stat-card-icon icon-users">
+                <i class="bi bi-people"></i>
+            </div>
+            <div>
+                <div class="stat-card-value">@Model.TotalUsers</div>
+                <div class="stat-card-label">@L("users")</div>
+                <div style="font-size:.72rem; margin-top:2px; color:#6b7280;">
+                    @L("newUsers30"): <strong>@Model.NewUsersLast30Days</strong>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-sm-6 col-xl-3">
+        <div class="stat-card h-100">
+            <div class="stat-card-icon icon-comments">
+                <i class="bi bi-chat-dots"></i>
+            </div>
+            <div>
+                <div class="stat-card-value">@Model.PendingComments</div>
+                <div class="stat-card-label">@L("commentsModeration")</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-sm-6 col-xl-3">
+        <div class="stat-card h-100">
+            <div class="stat-card-icon icon-timeline">
+                <i class="bi bi-calendar-event"></i>
+            </div>
+            <div>
+                <div class="stat-card-value">@Model.TimelineEvents</div>
+                <div class="stat-card-label">@L("timelineEvents")</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Quick actions -->
+<div class="d-flex gap-2 mb-4 flex-wrap">
+    <a href="/AdminObjects/Create" class="btn btn-sm btn-danger">
+        <i class="bi bi-plus-circle me-1"></i>@BelarusHeritage.Localization.UiText.T(Context, "admin.dashboard.index.addObject")
+    </a>
+    <a href="/AdminTimeline/Create" class="btn btn-sm btn-outline-secondary">
+        <i class="bi bi-calendar-plus me-1"></i>@BelarusHeritage.Localization.UiText.T(Context, "admin.timeline.index.add")
+    </a>
+    <a href="/AdminComments" class="btn btn-sm btn-outline-warning">
+        <i class="bi bi-chat-left-dots me-1"></i>@BelarusHeritage.Localization.UiText.T(Context, "admin.dashboard.index.commentsModeration")
+    </a>
+</div>
+
+<!-- Charts row -->
+<div class="row g-3 mb-4">
+    <div class="col-lg-5">
+        <div class="admin-card h-100">
+            <div class="admin-card-header">
+                <h5 class="admin-card-title">@BelarusHeritage.Localization.UiText.T(Context, "admin.dashboard.index.byRegions")</h5>
+            </div>
+            <div class="admin-card-body">
+                <div class="chart-wrap">
+                    <canvas id="chartRegions"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-4">
+        <div class="admin-card h-100">
+            <div class="admin-card-header">
+                <h5 class="admin-card-title">@BelarusHeritage.Localization.UiText.T(Context, "admin.dashboard.index.byCategories")</h5>
+            </div>
+            <div class="admin-card-body">
+                <div class="chart-wrap">
+                    <canvas id="chartCategories"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-3">
+        <div class="admin-card h-100">
+            <div class="admin-card-header">
+                <h5 class="admin-card-title">@BelarusHeritage.Localization.UiText.T(Context, "admin.dashboard.index.statuses")</h5>
+            </div>
+            <div class="admin-card-body d-flex align-items-center justify-content-center">
+                <div class="chart-wrap" style="height:200px; width:200px;">
+                    <canvas id="chartStatus"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Recent audit log -->
+<div class="admin-card">
+    <div class="admin-card-header">
+        <h5 class="admin-card-title">@BelarusHeritage.Localization.UiText.T(Context, "admin.dashboard.index.recentActions")</h5>
+        <a href="/AdminAuditLog" class="btn btn-sm btn-outline-secondary">@BelarusHeritage.Localization.UiText.T(Context, "admin.dashboard.index.fullLog")</a>
+    </div>
+    <div class="table-responsive">
+        <table class="table admin-table mb-0">
+            <thead>
+                <tr>
+                    <th>@BelarusHeritage.Localization.UiText.T(Context, "admin.dashboard.index.col.date")</th>
+                    <th>@BelarusHeritage.Localization.UiText.T(Context, "admin.dashboard.index.col.user")</th>
+                    <th>@BelarusHeritage.Localization.UiText.T(Context, "admin.dashboard.index.col.action")</th>
+                    <th>@BelarusHeritage.Localization.UiText.T(Context, "admin.dashboard.index.col.entity")</th>
+                    <th>ID</th>
+                    <th>IP</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var log in Model.RecentLogs)
+                {
+                    <tr>
+                        <td class="text-nowrap">
+                            @log.CreatedAt.ToString("dd.MM.yy HH:mm")
+                        </td>
+                        <td>@(log.User?.UserName ?? "—")</td>
+                        <td>
+                            <span class="log-action log-@log.Action.ToLower()">@log.Action</span>
+                        </td>
+                        <td>@log.Entity</td>
+                        <td>@(log.EntityId?.ToString() ?? "—")</td>
+                        <td class="text-muted" style="font-size:.8rem;">@(log.IpAddress ?? "—")</td>
+                    </tr>
+                }
+                @if (!Model.RecentLogs.Any())
+                {
+                    <tr>
+                        <td colspan="6" class="text-center text-muted py-4">@BelarusHeritage.Localization.UiText.T(Context, "admin.dashboard.index.empty")</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script>
+        Chart.defaults.font.family = 'Inter, sans-serif';
+        Chart.defaults.font.size = 12;
+
+        const palette = ['#8B1A2A','#3B5E3F','#C68B2A','#3b82f6','#8b5cf6','#ec4899','#14b8a6','#f97316','#06b6d4','#84cc16'];
+
+        // Regions bar chart
+        const regionsData = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.ObjectsByRegion));
+        new Chart(document.getElementById('chartRegions'), {
+            type: 'bar',
+            data: {
+                labels: Object.keys(regionsData),
+                datasets: [{
+                    data: Object.values(regionsData),
+                    backgroundColor: palette,
+                    borderRadius: 4,
+                    borderSkipped: false
+                }]
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: {
+                    x: { grid: { display: false }, ticks: { maxRotation: 30, font: { size: 10 } } },
+                    y: { beginAtZero: true, grid: { color: '#f0f3f7' }, ticks: { stepSize: 1 } }
+                }
+            }
+        });
+
+        // Categories doughnut
+        const catData = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.ObjectsByCategory));
+        new Chart(document.getElementById('chartCategories'), {
+            type: 'doughnut',
+            data: {
+                labels: Object.keys(catData),
+                datasets: [{
+                    data: Object.values(catData),
+                    backgroundColor: palette,
+                    borderWidth: 2,
+                    borderColor: '#fff'
+                }]
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                plugins: {
+                    legend: { position: 'bottom', labels: { boxWidth: 10, padding: 8, font: { size: 10 } } }
+                }
+            }
+        });
+
+        // Status doughnut
+        new Chart(document.getElementById('chartStatus'), {
+            type: 'doughnut',
+            data: {
+                labels: [
+                    '@BelarusHeritage.Localization.UiText.T(Context, "admin.dashboard.index.status.published")',
+                    '@BelarusHeritage.Localization.UiText.T(Context, "admin.dashboard.index.status.draft")',
+                    '@BelarusHeritage.Localization.UiText.T(Context, "admin.dashboard.index.status.trash")'
+                ],
+                datasets: [{
+                    data: [@Model.PublishedObjects, @Model.DraftObjects, @Model.DeletedObjects],
+                    backgroundColor: ['#3B5E3F', '#C68B2A', '#8B1A2A'],
+                    borderWidth: 2,
+                    borderColor: '#fff'
+                }]
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                plugins: {
+                    legend: { position: 'bottom', labels: { boxWidth: 10, padding: 8, font: { size: 10 } } }
+                }
+            }
+        });
+    </script>
+}

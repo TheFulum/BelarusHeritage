@@ -1,0 +1,822 @@
+@{
+    Layout = "_AdminLayout";
+    ViewData["Title"] = BelarusHeritage.Localization.UiText.T(Context, "admin.nav.catalogData");
+}
+
+@section Styles {
+    <style>
+        .nav-tabs-admin .nav-link {
+            color: #4a5568;
+            border: none;
+            border-bottom: 2px solid transparent;
+            padding: 10px 18px;
+            font-weight: 500;
+            font-size: .875rem;
+            border-radius: 0;
+        }
+        .nav-tabs-admin .nav-link.active {
+            color: #8B1A2A;
+            border-bottom-color: #8B1A2A;
+            background: transparent;
+        }
+        .nav-tabs-admin { border-bottom: 1px solid #e5e9f0; margin-bottom: 0; }
+        .tab-content { padding-top: 0; }
+
+        /* Inline edit form */
+        .ref-form { background: #f8fafc; border-radius: 8px; padding: 16px; margin-bottom: 16px; border: 1px solid #e5e9f0; }
+        .ref-form .form-label { font-size: .78rem; font-weight: 600; color: #374151; margin-bottom: 3px; }
+        .ref-form .form-control, .ref-form .form-select {
+            font-size: .85rem;
+            border-color: #d1d5db;
+        }
+        .ref-form-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            margin-bottom: 10px;
+        }
+        .ref-form-title {
+            font-size: .88rem;
+            font-weight: 700;
+            color: #1f2937;
+        }
+        .ref-form-note {
+            font-size: .78rem;
+            color: #6b7280;
+        }
+        .ref-form-actions {
+            display: flex;
+            gap: 8px;
+            justify-content: flex-end;
+            margin-top: 10px;
+        }
+        .mini-preview {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 9px;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            background: #fff;
+            font-size: .78rem;
+            color: #4b5563;
+            white-space: nowrap;
+        }
+        .mini-preview i { font-size: .95rem; }
+
+        /* Tag preview chip */
+        .color-dot {
+            display: inline-block;
+            width: 12px; height: 12px;
+            border-radius: 50%;
+            vertical-align: middle;
+            margin-right: 4px;
+            border: 1px solid rgba(0,0,0,.15);
+        }
+
+        /* Danger button tiny */
+        .btn-icon { padding: 3px 7px; font-size: .8rem; }
+
+        /* Fade in */
+        .ref-row { animation: fadeSlide .2s ease; }
+        @@keyframes fadeSlide {
+            from { opacity: 0; transform: translateY(-4px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+}
+
+<div class="admin-page-header">
+    <h1 class="admin-page-title">@BelarusHeritage.Localization.UiText.T(Context, "admin.catalog.index.title")</h1>
+    <div class="admin-page-breadcrumb">
+        <a href="/AdminDashboard">@BelarusHeritage.Localization.UiText.T(Context, "admin.nav.dashboard")</a>
+        <span class="sep">/</span>
+        <span>@BelarusHeritage.Localization.UiText.T(Context, "admin.catalog.index.title")</span>
+    </div>
+</div>
+
+<div class="admin-card">
+    <!-- Tabs -->
+    <div class="admin-card-header p-0">
+        <ul class="nav nav-tabs-admin" id="refTabs">
+            <li class="nav-item">
+                <button class="nav-link active" data-tab="categories">@BelarusHeritage.Localization.UiText.T(Context, "admin.catalog.index.tab.categories")</button>
+            </li>
+            <li class="nav-item">
+                <button class="nav-link" data-tab="tags">@BelarusHeritage.Localization.UiText.T(Context, "admin.catalog.index.tab.tags")</button>
+            </li>
+            <li class="nav-item">
+                <button class="nav-link" data-tab="styles">@BelarusHeritage.Localization.UiText.T(Context, "admin.catalog.index.tab.styles")</button>
+            </li>
+            <li class="nav-item">
+                <button class="nav-link" data-tab="regions">@BelarusHeritage.Localization.UiText.T(Context, "admin.catalog.index.tab.regions")</button>
+            </li>
+        </ul>
+    </div>
+
+    <div class="admin-card-body">
+        <!-- CATEGORIES -->
+        <div class="tab-pane" id="tab-categories">
+            <div class="ref-form" id="formCategories">
+                <input type="hidden" id="cat-id" value="0">
+                <div class="ref-form-header">
+                    <div>
+                        <div class="ref-form-title" id="cat-form-title">@BelarusHeritage.Localization.UiText.T(Context, "admin.catalog.index.cat.form.new")</div>
+                        <div class="ref-form-note">@BelarusHeritage.Localization.UiText.T(Context, "admin.catalog.index.form.requiredSlugRu")</div>
+                    </div>
+                    <div class="d-flex gap-2 align-items-center">
+                        <span class="mini-preview" id="cat-icon-preview"><i class="bi bi-building"></i> bi bi-building</span>
+                        <span class="mini-preview"><span class="color-dot" id="cat-color-preview" style="background:#8B1A2A"></span><span id="cat-color-text">#8B1A2A</span></span>
+                    </div>
+                </div>
+                <div class="row g-2 align-items-end">
+                    <div class="col-md-2">
+                        <label class="form-label">@BelarusHeritage.Localization.UiText.T(Context, "admin.catalog.index.label.slugReq")</label>
+                        <input type="text" class="form-control" id="cat-slug" placeholder="castles">
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label">@BelarusHeritage.Localization.UiText.T(Context, "admin.catalog.index.label.nameRuReq")</label>
+                        <input type="text" class="form-control" id="cat-name-ru" placeholder="@BelarusHeritage.Localization.UiText.T(Context, "admin.catalog.ph.catRu")">
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label">@BelarusHeritage.Localization.UiText.T(Context, "admin.catalog.index.label.nameBe")</label>
+                        <input type="text" class="form-control" id="cat-name-be" placeholder="@BelarusHeritage.Localization.UiText.T(Context, "admin.catalog.ph.catBe")">
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label">@BelarusHeritage.Localization.UiText.T(Context, "admin.catalog.index.label.nameEn")</label>
+                        <input type="text" class="form-control" id="cat-name-en" placeholder="Castles">
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label">@BelarusHeritage.Localization.UiText.T(Context, "admin.catalog.index.label.cssIcon")</label>
+                        <input type="text" class="form-control" id="cat-icon" placeholder="bi bi-building">
+                    </div>
+                    <div class="col-md-1">
+                        <label class="form-label">@BelarusHeritage.Localization.UiText.T(Context, "admin.catalog.index.label.color")</label>
+                        <input type="color" class="form-control form-control-color w-100" id="cat-color" value="#8B1A2A">
+                    </div>
+                </div>
+                <div class="ref-form-actions">
+                    <button type="button" class="btn btn-sm btn-outline-secondary" onclick="resetCatForm()">@BelarusHeritage.Localization.UiText.T(Context, "admin.catalog.index.btn.cancel")</button>
+                    <button type="button" class="btn btn-sm btn-danger" onclick="saveCategory()"><i class="bi bi-check2 me-1"></i>@BelarusHeritage.Localization.UiText.T(Context, "admin.catalog.index.btn.save")</button>
+                </div>
+                <div id="cat-error" class="text-danger mt-1" style="font-size:.8rem; display:none;"></div>
+            </div>
+
+            <div class="table-responsive">
+                <table class="table admin-table mb-0">
+                    <thead>
+                        <tr>
+                            <th>@BelarusHeritage.Localization.UiText.T(Context, "admin.catalog.index.col.slug")</th>
+                            <th>RU</th>
+                            <th>BE</th>
+                            <th>EN</th>
+                            <th>@BelarusHeritage.Localization.UiText.T(Context, "admin.catalog.index.col.icon")</th>
+                            <th>@BelarusHeritage.Localization.UiText.T(Context, "admin.catalog.index.col.color")</th>
+                            <th style="width:80px;"></th>
+                        </tr>
+                    </thead>
+                    <tbody id="catTableBody">
+                        <tr><td colspan="7" class="text-center text-muted py-3">@BelarusHeritage.Localization.UiText.T(Context, "admin.catalog.index.loading")</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- TAGS -->
+        <div class="tab-pane d-none" id="tab-tags">
+            <div class="ref-form">
+                <input type="hidden" id="tag-id" value="0">
+                <div class="ref-form-header">
+                    <div>
+                        <div class="ref-form-title" id="tag-form-title">@BelarusHeritage.Localization.UiText.T(Context, "admin.catalog.index.tag.form.new")</div>
+                        <div class="ref-form-note">@BelarusHeritage.Localization.UiText.T(Context, "admin.catalog.index.form.requiredSlugRu")</div>
+                    </div>
+                    <div class="d-flex gap-2 align-items-center">
+                        <span class="mini-preview"><span class="color-dot" id="tag-color-preview" style="background:#3B5E3F"></span><span id="tag-color-text">#3B5E3F</span></span>
+                    </div>
+                </div>
+                <div class="row g-2 align-items-end">
+                    <div class="col-md-2">
+                        <label class="form-label">@BelarusHeritage.Localization.UiText.T(Context, "admin.catalog.index.label.slugReq")</label>
+                        <input type="text" class="form-control" id="tag-slug" placeholder="gothic">
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label">@BelarusHeritage.Localization.UiText.T(Context, "admin.catalog.index.label.nameRuReq")</label>
+                        <input type="text" class="form-control" id="tag-name-ru" placeholder="@BelarusHeritage.Localization.UiText.T(Context, "admin.catalog.ph.tagRu")">
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label">@BelarusHeritage.Localization.UiText.T(Context, "admin.catalog.index.label.nameBe")</label>
+                        <input type="text" class="form-control" id="tag-name-be" placeholder="@BelarusHeritage.Localization.UiText.T(Context, "admin.catalog.ph.tagBe")">
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label">@BelarusHeritage.Localization.UiText.T(Context, "admin.catalog.index.label.nameEn")</label>
+                        <input type="text" class="form-control" id="tag-name-en" placeholder="Gothic">
+                    </div>
+                    <div class="col-md-1">
+                        <label class="form-label">@BelarusHeritage.Localization.UiText.T(Context, "admin.catalog.index.label.color")</label>
+                        <input type="color" class="form-control form-control-color w-100" id="tag-color" value="#3B5E3F">
+                    </div>
+                </div>
+                <div class="ref-form-actions">
+                    <button type="button" class="btn btn-sm btn-outline-secondary" onclick="resetTagForm()">@BelarusHeritage.Localization.UiText.T(Context, "admin.catalog.index.btn.cancel")</button>
+                    <button type="button" class="btn btn-sm btn-danger" onclick="saveTag()"><i class="bi bi-check2 me-1"></i>@BelarusHeritage.Localization.UiText.T(Context, "admin.catalog.index.btn.save")</button>
+                </div>
+                <div id="tag-error" class="text-danger mt-1" style="font-size:.8rem; display:none;"></div>
+            </div>
+
+            <div class="table-responsive">
+                <table class="table admin-table mb-0">
+                    <thead>
+                        <tr>
+                            <th>@BelarusHeritage.Localization.UiText.T(Context, "admin.catalog.index.col.slug")</th>
+                            <th>RU</th>
+                            <th>BE</th>
+                            <th>EN</th>
+                            <th>@BelarusHeritage.Localization.UiText.T(Context, "admin.catalog.index.col.color")</th>
+                            <th style="width:80px;"></th>
+                        </tr>
+                    </thead>
+                    <tbody id="tagTableBody">
+                        <tr><td colspan="6" class="text-center text-muted py-3">@BelarusHeritage.Localization.UiText.T(Context, "admin.catalog.index.loading")</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- ARCH STYLES -->
+        <div class="tab-pane d-none" id="tab-styles">
+            <div class="ref-form">
+                <input type="hidden" id="style-id" value="0">
+                <div class="ref-form-header">
+                    <div>
+                        <div class="ref-form-title" id="style-form-title">@BelarusHeritage.Localization.UiText.T(Context, "admin.catalog.index.style.form.new")</div>
+                        <div class="ref-form-note">@BelarusHeritage.Localization.UiText.T(Context, "admin.catalog.index.form.requiredSlugRu")</div>
+                    </div>
+                </div>
+                <div class="row g-2 align-items-end">
+                    <div class="col-md-2">
+                        <label class="form-label">@BelarusHeritage.Localization.UiText.T(Context, "admin.catalog.index.label.slugReq")</label>
+                        <input type="text" class="form-control" id="style-slug" placeholder="baroque">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">@BelarusHeritage.Localization.UiText.T(Context, "admin.catalog.index.label.nameRuReq")</label>
+                        <input type="text" class="form-control" id="style-name-ru" placeholder="@BelarusHeritage.Localization.UiText.T(Context, "admin.catalog.ph.styleRu")">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">@BelarusHeritage.Localization.UiText.T(Context, "admin.catalog.index.label.nameBe")</label>
+                        <input type="text" class="form-control" id="style-name-be" placeholder="@BelarusHeritage.Localization.UiText.T(Context, "admin.catalog.ph.styleBe")">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">@BelarusHeritage.Localization.UiText.T(Context, "admin.catalog.index.label.nameEn")</label>
+                        <input type="text" class="form-control" id="style-name-en" placeholder="Baroque">
+                    </div>
+                </div>
+                <div class="ref-form-actions">
+                    <button type="button" class="btn btn-sm btn-outline-secondary" onclick="resetStyleForm()">@BelarusHeritage.Localization.UiText.T(Context, "admin.catalog.index.btn.cancel")</button>
+                    <button type="button" class="btn btn-sm btn-danger" onclick="saveStyle()"><i class="bi bi-check2 me-1"></i>@BelarusHeritage.Localization.UiText.T(Context, "admin.catalog.index.btn.save")</button>
+                </div>
+                <div id="style-error" class="text-danger mt-1" style="font-size:.8rem; display:none;"></div>
+            </div>
+
+            <div class="table-responsive">
+                <table class="table admin-table mb-0">
+                    <thead>
+                        <tr>
+                            <th>@BelarusHeritage.Localization.UiText.T(Context, "admin.catalog.index.col.slug")</th>
+                            <th>RU</th>
+                            <th>BE</th>
+                            <th>EN</th>
+                            <th style="width:80px;"></th>
+                        </tr>
+                    </thead>
+                    <tbody id="styleTableBody">
+                        <tr><td colspan="5" class="text-center text-muted py-3">@BelarusHeritage.Localization.UiText.T(Context, "admin.catalog.index.loading")</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- REGIONS -->
+        <div class="tab-pane d-none" id="tab-regions">
+            <div class="alert alert-info admin-alert mb-3" style="font-size:.82rem;">
+                <i class="bi bi-info-circle me-2"></i>
+                @BelarusHeritage.Localization.UiText.T(Context, "admin.catalog.index.regions.hint")
+            </div>
+
+            <div class="ref-form d-none" id="formRegion">
+                <input type="hidden" id="region-id" value="0">
+                <div class="row g-2 align-items-end">
+                    <div class="col-md-3">
+                        <label class="form-label">@BelarusHeritage.Localization.UiText.T(Context, "admin.catalog.index.label.nameRuReq")</label>
+                        <input type="text" class="form-control" id="region-name-ru">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">@BelarusHeritage.Localization.UiText.T(Context, "admin.catalog.index.label.nameBe")</label>
+                        <input type="text" class="form-control" id="region-name-be">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">@BelarusHeritage.Localization.UiText.T(Context, "admin.catalog.index.label.nameEn")</label>
+                        <input type="text" class="form-control" id="region-name-en">
+                    </div>
+                    <div class="col-md-2 d-flex gap-2">
+                        <button class="btn btn-danger" onclick="saveRegion()"><i class="bi bi-check2"></i> @BelarusHeritage.Localization.UiText.T(Context, "admin.catalog.index.btn.save")</button>
+                        <button class="btn btn-outline-secondary" onclick="cancelEditRegion()">@BelarusHeritage.Localization.UiText.T(Context, "admin.catalog.index.btn.cancel")</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="table-responsive">
+                <table class="table admin-table mb-0">
+                    <thead>
+                        <tr>
+                            <th>@BelarusHeritage.Localization.UiText.T(Context, "admin.catalog.index.col.code")</th>
+                            <th>RU</th>
+                            <th>BE</th>
+                            <th>EN</th>
+                            <th style="width:80px;"></th>
+                        </tr>
+                    </thead>
+                    <tbody id="regionTableBody">
+                        <tr><td colspan="5" class="text-center text-muted py-3">@BelarusHeritage.Localization.UiText.T(Context, "admin.catalog.index.loading")</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Confirm delete modal -->
+<div class="modal fade" id="deleteModal" tabindex="-1">
+    <div class="modal-dialog modal-sm">
+        <div class="modal-content">
+            <div class="modal-header border-0 pb-0">
+                <h6 class="modal-title fw-semibold">@BelarusHeritage.Localization.UiText.T(Context, "admin.catalog.index.delete.title")</h6>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p class="mb-0" style="font-size:.875rem;" id="deleteModalText">@BelarusHeritage.Localization.UiText.T(Context, "admin.catalog.index.delete.item")</p>
+            </div>
+            <div class="modal-footer border-0 pt-0">
+                <button class="btn btn-sm btn-secondary" data-bs-dismiss="modal">@BelarusHeritage.Localization.UiText.T(Context, "admin.catalog.index.btn.cancel")</button>
+                <button class="btn btn-sm btn-danger" id="deleteConfirmBtn">@BelarusHeritage.Localization.UiText.T(Context, "admin.catalog.index.btn.delete")</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+const deleteModal = new bootstrap.Modal('#deleteModal');
+let deleteCallback = null;
+const i18nCatalog = {
+    noRecords: '@BelarusHeritage.Localization.UiText.T(Context, "admin.catalog.index.empty.records")',
+    noData: '@BelarusHeritage.Localization.UiText.T(Context, "admin.catalog.index.empty.data")',
+    editPrefix: '@BelarusHeritage.Localization.UiText.T(Context, "admin.catalog.index.form.editPrefix")',
+    catFormNew: '@BelarusHeritage.Localization.UiText.T(Context, "admin.catalog.index.cat.form.new")',
+    tagFormNew: '@BelarusHeritage.Localization.UiText.T(Context, "admin.catalog.index.tag.form.new")',
+    styleFormNew: '@BelarusHeritage.Localization.UiText.T(Context, "admin.catalog.index.style.form.new")',
+    requiredSlugRu: '@BelarusHeritage.Localization.UiText.T(Context, "admin.catalog.index.error.requiredSlugRu")',
+    saveError: '@BelarusHeritage.Localization.UiText.T(Context, "admin.catalog.index.error.save")',
+    deleteCategoryConfirm: '@BelarusHeritage.Localization.UiText.T(Context, "admin.catalog.index.delete.categoryConfirm")',
+    deleteCategoryBlocked: '@BelarusHeritage.Localization.UiText.T(Context, "admin.catalog.index.delete.categoryBlocked")',
+    deleteTagConfirm: '@BelarusHeritage.Localization.UiText.T(Context, "admin.catalog.index.delete.tagConfirm")',
+    deleteStyleConfirm: '@BelarusHeritage.Localization.UiText.T(Context, "admin.catalog.index.delete.styleConfirm")',
+    btnEdit: '@BelarusHeritage.Localization.UiText.T(Context, "admin.objects.index.btn.edit")',
+    btnDelete: '@BelarusHeritage.Localization.UiText.T(Context, "admin.objects.index.btn.delete")'
+};
+
+document.querySelectorAll('[data-tab]').forEach(btn => {
+    btn.addEventListener('click', () => {
+        document.querySelectorAll('[data-tab]').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        document.querySelectorAll('.tab-pane').forEach(p => p.classList.add('d-none'));
+        document.getElementById('tab-' + btn.dataset.tab).classList.remove('d-none');
+        loadTabData(btn.dataset.tab);
+    });
+});
+
+document.getElementById('deleteConfirmBtn').addEventListener('click', () => {
+    if (deleteCallback) deleteCallback();
+    deleteModal.hide();
+});
+
+function confirmDelete(text, callback) {
+    document.getElementById('deleteModalText').textContent = text;
+    deleteCallback = callback;
+    deleteModal.show();
+}
+
+// ────────────────────── CATEGORIES ──────────────────────
+let categories = [];
+
+async function loadCategories() {
+    const res = await fetch('/AdminCatalogData/GetCategories');
+    categories = await res.json();
+    renderCategories();
+}
+
+function renderCategories() {
+    const tbody = document.getElementById('catTableBody');
+    if (!categories.length) {
+        tbody.innerHTML = `<tr><td colspan="7" class="text-center text-muted py-3">${i18nCatalog.noRecords}</td></tr>`;
+        return;
+    }
+    tbody.innerHTML = categories.map(c => `
+        <tr class="ref-row">
+            <td><code style="font-size:.8rem;">${esc(c.slug)}</code></td>
+            <td>${esc(c.nameRu)}</td>
+            <td>${esc(c.nameBe || '—')}</td>
+            <td>${esc(c.nameEn || '—')}</td>
+            <td><small class="text-muted">${esc(c.iconClass || '—')}</small></td>
+            <td>
+                ${c.colorHex ? `<span class="color-dot" style="background:${esc(c.colorHex)}"></span><code style="font-size:.78rem;">${esc(c.colorHex)}</code>` : '—'}
+            </td>
+            <td class="text-end">
+                <button class="btn btn-sm btn-outline-secondary btn-icon me-1" onclick="editCategory(${c.id})" title="${i18nCatalog.btnEdit}">
+                    <i class="bi bi-pencil"></i>
+                </button>
+                <button class="btn btn-sm btn-outline-danger btn-icon" onclick="deleteCatConfirm(${c.id}, '${esc(c.nameRu)}')" title="${i18nCatalog.btnDelete}">
+                    <i class="bi bi-trash3"></i>
+                </button>
+            </td>
+        </tr>`).join('');
+}
+
+function editCategory(id) {
+    const c = categories.find(x => x.id === id);
+    if (!c) return;
+    document.getElementById('cat-id').value = c.id;
+    document.getElementById('cat-slug').value = c.slug;
+    document.getElementById('cat-name-ru').value = c.nameRu;
+    document.getElementById('cat-name-be').value = c.nameBe || '';
+    document.getElementById('cat-name-en').value = c.nameEn || '';
+    document.getElementById('cat-icon').value = c.iconClass || '';
+    document.getElementById('cat-color').value = c.colorHex || '#8B1A2A';
+    document.getElementById('cat-form-title').textContent = `${i18nCatalog.editPrefix}: ${c.nameRu}`;
+    syncCategoryPreview();
+    document.getElementById('cat-slug').focus();
+}
+
+async function saveCategory() {
+    const err = document.getElementById('cat-error');
+    err.style.display = 'none';
+    const data = {
+        id: parseInt(document.getElementById('cat-id').value),
+        slug: document.getElementById('cat-slug').value.trim(),
+        nameRu: document.getElementById('cat-name-ru').value.trim(),
+        nameBe: document.getElementById('cat-name-be').value.trim(),
+        nameEn: document.getElementById('cat-name-en').value.trim(),
+        iconClass: document.getElementById('cat-icon').value.trim(),
+        colorHex: document.getElementById('cat-color').value
+    };
+    if (!data.slug || !data.nameRu) { err.textContent = i18nCatalog.requiredSlugRu; err.style.display = ''; return; }
+
+    const res = await fetch('/AdminCatalogData/SaveCategory', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+    });
+    const json = await res.json();
+    if (json.success) {
+        resetCatForm();
+        loadCategories();
+    } else {
+        err.textContent = json.message || i18nCatalog.saveError;
+        err.style.display = '';
+    }
+}
+
+function resetCatForm() {
+    ['cat-id','cat-slug','cat-name-ru','cat-name-be','cat-name-en','cat-icon'].forEach(id => {
+        document.getElementById(id).value = id === 'cat-id' ? '0' : '';
+    });
+    document.getElementById('cat-color').value = '#8B1A2A';
+    document.getElementById('cat-form-title').textContent = i18nCatalog.catFormNew;
+    syncCategoryPreview();
+}
+
+function deleteCatConfirm(id, name) {
+    confirmDelete(i18nCatalog.deleteCategoryConfirm.replace('{0}', name), async () => {
+        const res = await fetch('/AdminCatalogData/DeleteCategory', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(id)
+        });
+        const json = await res.json();
+        if (json.success) { loadCategories(); }
+        else { showToast(json.message || i18nCatalog.deleteCategoryBlocked, 'danger'); }
+    });
+}
+
+// ────────────────────── TAGS ──────────────────────
+let tags = [];
+
+async function loadTags() {
+    const res = await fetch('/AdminCatalogData/GetTags');
+    tags = await res.json();
+    renderTags();
+}
+
+function renderTags() {
+    const tbody = document.getElementById('tagTableBody');
+    if (!tags.length) {
+        tbody.innerHTML = `<tr><td colspan="6" class="text-center text-muted py-3">${i18nCatalog.noRecords}</td></tr>`;
+        return;
+    }
+    tbody.innerHTML = tags.map(t => `
+        <tr class="ref-row">
+            <td><code style="font-size:.8rem;">${esc(t.slug)}</code></td>
+            <td>${esc(t.nameRu)}</td>
+            <td>${esc(t.nameBe || '—')}</td>
+            <td>${esc(t.nameEn || '—')}</td>
+            <td>
+                ${t.colorHex ? `<span class="color-dot" style="background:${esc(t.colorHex)}"></span><code style="font-size:.78rem;">${esc(t.colorHex)}</code>` : '—'}
+            </td>
+            <td class="text-end">
+                <button class="btn btn-sm btn-outline-secondary btn-icon me-1" onclick="editTag(${t.id})">
+                    <i class="bi bi-pencil"></i>
+                </button>
+                <button class="btn btn-sm btn-outline-danger btn-icon" onclick="deleteTagConfirm(${t.id}, '${esc(t.nameRu)}')">
+                    <i class="bi bi-trash3"></i>
+                </button>
+            </td>
+        </tr>`).join('');
+}
+
+function editTag(id) {
+    const t = tags.find(x => x.id === id);
+    if (!t) return;
+    document.getElementById('tag-id').value = t.id;
+    document.getElementById('tag-slug').value = t.slug;
+    document.getElementById('tag-name-ru').value = t.nameRu;
+    document.getElementById('tag-name-be').value = t.nameBe || '';
+    document.getElementById('tag-name-en').value = t.nameEn || '';
+    document.getElementById('tag-color').value = t.colorHex || '#3B5E3F';
+    document.getElementById('tag-form-title').textContent = `${i18nCatalog.editPrefix}: ${t.nameRu}`;
+    syncTagPreview();
+}
+
+function resetTagForm() {
+    ['tag-id','tag-slug','tag-name-ru','tag-name-be','tag-name-en'].forEach(id => {
+        document.getElementById(id).value = id === 'tag-id' ? '0' : '';
+    });
+    document.getElementById('tag-color').value = '#3B5E3F';
+    document.getElementById('tag-form-title').textContent = i18nCatalog.tagFormNew;
+    syncTagPreview();
+}
+
+async function saveTag() {
+    const err = document.getElementById('tag-error');
+    err.style.display = 'none';
+    const data = {
+        id: parseInt(document.getElementById('tag-id').value),
+        slug: document.getElementById('tag-slug').value.trim(),
+        nameRu: document.getElementById('tag-name-ru').value.trim(),
+        nameBe: document.getElementById('tag-name-be').value.trim(),
+        nameEn: document.getElementById('tag-name-en').value.trim(),
+        colorHex: document.getElementById('tag-color').value
+    };
+    if (!data.slug || !data.nameRu) { err.textContent = i18nCatalog.requiredSlugRu; err.style.display = ''; return; }
+
+    const res = await fetch('/AdminCatalogData/SaveTag', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+    });
+    const json = await res.json();
+    if (json.success) {
+        resetTagForm();
+        loadTags();
+    } else {
+        err.textContent = json.message || i18nCatalog.saveError;
+        err.style.display = '';
+    }
+}
+
+function deleteTagConfirm(id, name) {
+    confirmDelete(i18nCatalog.deleteTagConfirm.replace('{0}', name), async () => {
+        await fetch('/AdminCatalogData/DeleteTag', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(id)
+        });
+        loadTags();
+    });
+}
+
+// ────────────────────── ARCH STYLES ──────────────────────
+let styles = [];
+
+async function loadStyles() {
+    const res = await fetch('/AdminCatalogData/GetArchStyles');
+    styles = await res.json();
+    renderStyles();
+}
+
+function renderStyles() {
+    const tbody = document.getElementById('styleTableBody');
+    if (!styles.length) {
+        tbody.innerHTML = `<tr><td colspan="5" class="text-center text-muted py-3">${i18nCatalog.noRecords}</td></tr>`;
+        return;
+    }
+    tbody.innerHTML = styles.map(s => `
+        <tr class="ref-row">
+            <td><code style="font-size:.8rem;">${esc(s.slug)}</code></td>
+            <td>${esc(s.nameRu)}</td>
+            <td>${esc(s.nameBe || '—')}</td>
+            <td>${esc(s.nameEn || '—')}</td>
+            <td class="text-end">
+                <button class="btn btn-sm btn-outline-secondary btn-icon me-1" onclick="editStyle(${s.id})">
+                    <i class="bi bi-pencil"></i>
+                </button>
+                <button class="btn btn-sm btn-outline-danger btn-icon" onclick="deleteStyleConfirm(${s.id}, '${esc(s.nameRu)}')">
+                    <i class="bi bi-trash3"></i>
+                </button>
+            </td>
+        </tr>`).join('');
+}
+
+function editStyle(id) {
+    const s = styles.find(x => x.id === id);
+    if (!s) return;
+    document.getElementById('style-id').value = s.id;
+    document.getElementById('style-slug').value = s.slug;
+    document.getElementById('style-name-ru').value = s.nameRu;
+    document.getElementById('style-name-be').value = s.nameBe || '';
+    document.getElementById('style-name-en').value = s.nameEn || '';
+    document.getElementById('style-form-title').textContent = `${i18nCatalog.editPrefix}: ${s.nameRu}`;
+}
+
+function resetStyleForm() {
+    ['style-id','style-slug','style-name-ru','style-name-be','style-name-en'].forEach(id => {
+        document.getElementById(id).value = id === 'style-id' ? '0' : '';
+    });
+    document.getElementById('style-form-title').textContent = i18nCatalog.styleFormNew;
+}
+
+async function saveStyle() {
+    const err = document.getElementById('style-error');
+    err.style.display = 'none';
+    const data = {
+        id: parseInt(document.getElementById('style-id').value),
+        slug: document.getElementById('style-slug').value.trim(),
+        nameRu: document.getElementById('style-name-ru').value.trim(),
+        nameBe: document.getElementById('style-name-be').value.trim(),
+        nameEn: document.getElementById('style-name-en').value.trim(),
+    };
+    if (!data.slug || !data.nameRu) { err.textContent = i18nCatalog.requiredSlugRu; err.style.display = ''; return; }
+
+    const res = await fetch('/AdminCatalogData/SaveArchStyle', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+    });
+    const json = await res.json();
+    if (json.success) {
+        resetStyleForm();
+        loadStyles();
+    } else {
+        err.textContent = json.message || i18nCatalog.saveError;
+        err.style.display = '';
+    }
+}
+
+function deleteStyleConfirm(id, name) {
+    confirmDelete(i18nCatalog.deleteStyleConfirm.replace('{0}', name), async () => {
+        await fetch('/AdminCatalogData/DeleteArchStyle', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(id)
+        });
+        loadStyles();
+    });
+}
+
+// ────────────────────── REGIONS ──────────────────────
+let regions = [];
+
+async function loadRegions() {
+    const res = await fetch('/AdminCatalogData/GetRegions');
+    regions = await res.json();
+    renderRegions();
+}
+
+function renderRegions() {
+    const tbody = document.getElementById('regionTableBody');
+    if (!regions.length) {
+        tbody.innerHTML = `<tr><td colspan="5" class="text-center text-muted py-3">${i18nCatalog.noData}</td></tr>`;
+        return;
+    }
+    tbody.innerHTML = regions.map(r => `
+        <tr class="ref-row">
+            <td><code style="font-size:.8rem;">${esc(r.code)}</code></td>
+            <td>${esc(r.nameRu)}</td>
+            <td>${esc(r.nameBe || '—')}</td>
+            <td>${esc(r.nameEn || '—')}</td>
+            <td class="text-end">
+                <button class="btn btn-sm btn-outline-secondary btn-icon" onclick="editRegion(${r.id})">
+                    <i class="bi bi-pencil"></i>
+                </button>
+            </td>
+        </tr>`).join('');
+}
+
+function editRegion(id) {
+    const r = regions.find(x => x.id === id);
+    if (!r) return;
+    document.getElementById('region-id').value = r.id;
+    document.getElementById('region-name-ru').value = r.nameRu;
+    document.getElementById('region-name-be').value = r.nameBe || '';
+    document.getElementById('region-name-en').value = r.nameEn || '';
+    document.getElementById('formRegion').classList.remove('d-none');
+    document.getElementById('region-name-ru').focus();
+}
+
+function cancelEditRegion() {
+    document.getElementById('formRegion').classList.add('d-none');
+}
+
+async function saveRegion() {
+    const data = {
+        id: parseInt(document.getElementById('region-id').value),
+        nameRu: document.getElementById('region-name-ru').value.trim(),
+        nameBe: document.getElementById('region-name-be').value.trim(),
+        nameEn: document.getElementById('region-name-en').value.trim()
+    };
+    await fetch('/AdminCatalogData/SaveRegion', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+    });
+    document.getElementById('formRegion').classList.add('d-none');
+    loadRegions();
+}
+
+// ────────────────────── INIT ──────────────────────
+function loadTabData(tab) {
+    if (tab === 'categories') loadCategories();
+    else if (tab === 'tags') loadTags();
+    else if (tab === 'styles') loadStyles();
+    else if (tab === 'regions') loadRegions();
+}
+
+function esc(str) {
+    if (!str) return '';
+    return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function slugifyRu(v) {
+    const translitMap = {
+        '\u0430': 'a', '\u0431': 'b', '\u0432': 'v', '\u0433': 'g', '\u0434': 'd', '\u0435': 'e', '\u0451': 'yo',
+        '\u0436': 'zh', '\u0437': 'z', '\u0438': 'i', '\u0439': 'y', '\u043a': 'k', '\u043b': 'l', '\u043c': 'm',
+        '\u043d': 'n', '\u043e': 'o', '\u043f': 'p', '\u0440': 'r', '\u0441': 's', '\u0442': 't', '\u0443': 'u',
+        '\u0444': 'f', '\u0445': 'kh', '\u0446': 'ts', '\u0447': 'ch', '\u0448': 'sh', '\u0449': 'sch', '\u044a': '',
+        '\u044b': 'y', '\u044c': '', '\u044d': 'e', '\u044e': 'yu', '\u044f': 'ya'
+    };
+    return (v || '')
+        .toLowerCase()
+        .replace(/['"`]/g, '')
+        .replace(/\s+/g, '-')
+        .split('').map(ch => translitMap[ch] ?? ch).join('')
+        .replace(/[^a-z0-9-]/g, '')
+        .replace(/-+/g, '-')
+        .replace(/^-|-$/g, '');
+}
+
+function syncCategoryPreview() {
+    const icon = document.getElementById('cat-icon').value.trim() || 'bi bi-building';
+    const color = document.getElementById('cat-color').value || '#8B1A2A';
+    document.getElementById('cat-icon-preview').innerHTML = `<i class="${esc(icon)}"></i> ${esc(icon)}`;
+    document.getElementById('cat-color-preview').style.background = color;
+    document.getElementById('cat-color-text').textContent = color.toUpperCase();
+}
+
+function syncTagPreview() {
+    const color = document.getElementById('tag-color').value || '#3B5E3F';
+    document.getElementById('tag-color-preview').style.background = color;
+    document.getElementById('tag-color-text').textContent = color.toUpperCase();
+}
+
+document.getElementById('cat-name-ru').addEventListener('input', () => {
+    const slugEl = document.getElementById('cat-slug');
+    if (!slugEl.value.trim()) slugEl.value = slugifyRu(document.getElementById('cat-name-ru').value);
+});
+document.getElementById('tag-name-ru').addEventListener('input', () => {
+    const slugEl = document.getElementById('tag-slug');
+    if (!slugEl.value.trim()) slugEl.value = slugifyRu(document.getElementById('tag-name-ru').value);
+});
+document.getElementById('style-name-ru').addEventListener('input', () => {
+    const slugEl = document.getElementById('style-slug');
+    if (!slugEl.value.trim()) slugEl.value = slugifyRu(document.getElementById('style-name-ru').value);
+});
+document.getElementById('cat-color').addEventListener('input', syncCategoryPreview);
+document.getElementById('cat-icon').addEventListener('input', syncCategoryPreview);
+document.getElementById('tag-color').addEventListener('input', syncTagPreview);
+syncCategoryPreview();
+syncTagPreview();
+
+// Load default tab
+loadCategories();
+</script>
+}

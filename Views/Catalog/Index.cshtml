@@ -1,0 +1,222 @@
+@model BelarusHeritage.Models.ViewModels.CatalogViewModel
+@{
+    var lang = BelarusHeritage.Localization.UiText.Lang(Context);
+    ViewData["Title"] = BelarusHeritage.Localization.UiText.T(Context, "catalog.title");
+    string NameOf(string ru, string be, string en) => lang == "en" ? en : lang == "be" ? be : ru;
+}
+
+<section class="catalog-section">
+    <div class="container">
+        <nav aria-label="breadcrumb" class="breadcrumbs">
+            <a href="@Url.Action("Index", "Home")">@BelarusHeritage.Localization.UiText.T(Context, "nav.home")</a>
+            <span class="breadcrumb-sep">/</span>
+            <span>@BelarusHeritage.Localization.UiText.T(Context, "catalog.title")</span>
+        </nav>
+
+        <div class="catalog-header" data-aos="fade-up">
+            <h1 class="catalog-title">@BelarusHeritage.Localization.UiText.T(Context, "catalog.title")</h1>
+            <p class="catalog-count">
+                @BelarusHeritage.Localization.UiText.T(Context, "catalog.found") <strong>@Model.TotalCount</strong> @PluralObjects(Model.TotalCount)
+            </p>
+        </div>
+
+        <form method="get" id="catalogFilters" class="catalog-toolbar">
+            <div class="row g-3 align-items-end">
+                <div class="col-md-3">
+                    <label class="form-label">@BelarusHeritage.Localization.UiText.T(Context, "catalog.filter.category")</label>
+                    <select name="category" class="form-select" onchange="this.form.submit()">
+                        <option value="">@BelarusHeritage.Localization.UiText.T(Context, "catalog.filter.all")</option>
+                        @foreach (var c in Model.Categories)
+                        {
+                            var selected = Model.Filters.CategoryId == c.Id ? "selected" : null;
+                            <option value="@c.Id" selected="@selected">@NameOf(c.NameRu, c.NameBe, c.NameEn)</option>
+                        }
+                    </select>
+                </div>
+
+                <div class="col-md-3">
+                    <label class="form-label">@BelarusHeritage.Localization.UiText.T(Context, "catalog.filter.region")</label>
+                    <select name="region" class="form-select" onchange="this.form.submit()">
+                        <option value="">@BelarusHeritage.Localization.UiText.T(Context, "catalog.filter.all")</option>
+                        @foreach (var r in Model.Regions)
+                        {
+                            var selected = Model.Filters.RegionId == r.Id ? "selected" : null;
+                            <option value="@r.Id" selected="@selected">@NameOf(r.NameRu, r.NameBe, r.NameEn)</option>
+                        }
+                    </select>
+                </div>
+
+                <div class="col-md-3">
+                    <label class="form-label">@BelarusHeritage.Localization.UiText.T(Context, "catalog.filter.status")</label>
+                    <select name="status" class="form-select" onchange="this.form.submit()">
+                        <option value="">@BelarusHeritage.Localization.UiText.T(Context, "catalog.filter.all")</option>
+                        <option value="Preserved" selected="@(Model.Filters.PreservationStatus == BelarusHeritage.Models.Domain.PreservationStatus.Preserved ? "selected" : null)">@BelarusHeritage.Localization.UiText.T(Context, "catalog.status.preserved")</option>
+                        <option value="Partial" selected="@(Model.Filters.PreservationStatus == BelarusHeritage.Models.Domain.PreservationStatus.Partial ? "selected" : null)">@BelarusHeritage.Localization.UiText.T(Context, "catalog.status.partial")</option>
+                        <option value="Ruins" selected="@(Model.Filters.PreservationStatus == BelarusHeritage.Models.Domain.PreservationStatus.Ruins ? "selected" : null)">@BelarusHeritage.Localization.UiText.T(Context, "catalog.status.ruins")</option>
+                        <option value="Lost" selected="@(Model.Filters.PreservationStatus == BelarusHeritage.Models.Domain.PreservationStatus.Lost ? "selected" : null)">@BelarusHeritage.Localization.UiText.T(Context, "catalog.status.lost")</option>
+                    </select>
+                </div>
+
+                <div class="col-md-3">
+                    <label class="form-label">@BelarusHeritage.Localization.UiText.T(Context, "catalog.filter.sort")</label>
+                    <select name="sortBy" class="form-select" onchange="this.form.submit()">
+                        <option value="name" selected="@(Model.SortBy == "name" ? "selected" : null)">@BelarusHeritage.Localization.UiText.T(Context, "catalog.sort.name")</option>
+                        <option value="rating" selected="@(Model.SortBy == "rating" ? "selected" : null)">@BelarusHeritage.Localization.UiText.T(Context, "catalog.sort.rating")</option>
+                        <option value="century" selected="@(Model.SortBy == "century" ? "selected" : null)">@BelarusHeritage.Localization.UiText.T(Context, "catalog.sort.century")</option>
+                        <option value="newest" selected="@(Model.SortBy == "newest" ? "selected" : null)">@BelarusHeritage.Localization.UiText.T(Context, "catalog.sort.newest")</option>
+                    </select>
+                </div>
+            </div>
+
+            @if (HasActiveFilters())
+            {
+                <div class="catalog-chips">
+                    <a href="@Url.Action("Index", "Catalog")" class="btn btn-sm btn-outline-secondary">
+                        <i class="bi bi-x-circle me-1"></i>@BelarusHeritage.Localization.UiText.T(Context, "catalog.filter.clear")
+                    </a>
+                </div>
+            }
+        </form>
+
+        @if (!Model.Objects.Any())
+        {
+            <div class="catalog-empty">
+                <i class="bi bi-inbox" style="font-size:3rem; color:#C68B2A; opacity:.5;"></i>
+                <h3>@BelarusHeritage.Localization.UiText.T(Context, "catalog.empty.title")</h3>
+                <p>@BelarusHeritage.Localization.UiText.T(Context, "catalog.empty.subtitle")</p>
+            </div>
+        }
+        else
+        {
+            <div class="catalog-grid" id="catalogGrid">
+                @foreach (var obj in Model.Objects)
+                {
+                    <partial name="_ObjectCard" model="obj" />
+                }
+            </div>
+
+            @if (Model.TotalPages > 1)
+            {
+                <nav class="catalog-pagination" aria-label="pagination">
+                    <ul class="pagination justify-content-center">
+                        @for (int p = 1; p <= Model.TotalPages; p++)
+                        {
+                            var active = p == Model.CurrentPage ? "active" : "";
+                            <li class="page-item @active">
+                                <a class="page-link" href="@BuildPageUrl(p)">@p</a>
+                            </li>
+                        }
+                    </ul>
+                </nav>
+            }
+        }
+    </div>
+</section>
+
+<style>
+    .catalog-section { padding: 40px 0 80px; }
+    .breadcrumbs { font-size: .9rem; color: #6B6B6B; margin-bottom: 24px; }
+    .breadcrumbs a { color: #8B1A2A; text-decoration: none; }
+    .breadcrumbs a:hover { text-decoration: underline; }
+    .breadcrumb-sep { margin: 0 8px; color: #6B6B6B; }
+    .catalog-header { margin-bottom: 32px; }
+    .catalog-title {
+        font-family: 'Cormorant Garamond', serif;
+        font-size: 2.5rem;
+        font-weight: 600;
+        margin-bottom: 8px;
+    }
+    .catalog-count { color: #6B6B6B; margin: 0; }
+    .catalog-toolbar {
+        background: #FFF;
+        border: 1px solid #E0D8CC;
+        border-radius: 12px;
+        padding: 20px;
+        margin-bottom: 32px;
+    }
+    .catalog-chips { margin-top: 16px; }
+    .catalog-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+        gap: 24px;
+        margin-bottom: 40px;
+    }
+    .catalog-empty {
+        text-align: center;
+        padding: 80px 20px;
+        color: #6B6B6B;
+    }
+    .catalog-empty h3 {
+        font-family: 'Cormorant Garamond', serif;
+        margin-top: 16px;
+    }
+    .catalog-pagination .page-link {
+        color: #8B1A2A;
+        border-color: #E0D8CC;
+    }
+    .catalog-pagination .page-item.active .page-link {
+        background: #8B1A2A;
+        border-color: #8B1A2A;
+    }
+</style>
+
+@functions {
+    private bool HasActiveFilters()
+    {
+        return Model.Filters.CategoryId.HasValue ||
+               Model.Filters.RegionId.HasValue ||
+               Model.Filters.TagId.HasValue ||
+               Model.Filters.PreservationStatus.HasValue ||
+               Model.Filters.CenturyStart.HasValue ||
+               Model.Filters.HasImages == true ||
+               Model.Filters.Visitable == true;
+    }
+
+    private string BuildPageUrl(int page)
+    {
+        var qs = new Dictionary<string, string?>
+        {
+            ["category"] = Model.Filters.CategoryId?.ToString(),
+            ["region"] = Model.Filters.RegionId?.ToString(),
+            ["tag"] = Model.Filters.TagId?.ToString(),
+            ["status"] = Model.Filters.PreservationStatus?.ToString(),
+            ["sortBy"] = Model.SortBy,
+            ["page"] = page.ToString()
+        };
+        var parts = qs.Where(kv => !string.IsNullOrEmpty(kv.Value))
+                      .Select(kv => $"{kv.Key}={Uri.EscapeDataString(kv.Value!)}");
+        return "?" + string.Join("&", parts);
+    }
+
+    private string PluralObjects(int n)
+    {
+        var lang = BelarusHeritage.Localization.UiText.Lang(Context);
+        if (lang == "en") return n == 1 ? BelarusHeritage.Localization.UiText.T(Context, "catalog.objects.one") : BelarusHeritage.Localization.UiText.T(Context, "catalog.objects.many");
+        if (lang == "be")
+        {
+            var m = n % 10;
+            var h = n % 100;
+            if (h >= 11 && h <= 14) return BelarusHeritage.Localization.UiText.T(Context, "catalog.objects.many");
+            return m switch
+            {
+                1 => BelarusHeritage.Localization.UiText.T(Context, "catalog.objects.one"),
+                2 or 3 or 4 => BelarusHeritage.Localization.UiText.T(Context, "catalog.objects.few"),
+                _ => BelarusHeritage.Localization.UiText.T(Context, "catalog.objects.many")
+            };
+        }
+        else
+        {
+            var m = n % 10;
+            var h = n % 100;
+            if (h >= 11 && h <= 14) return BelarusHeritage.Localization.UiText.T(Context, "catalog.objects.many");
+            return m switch
+            {
+                1 => BelarusHeritage.Localization.UiText.T(Context, "catalog.objects.one"),
+                2 or 3 or 4 => BelarusHeritage.Localization.UiText.T(Context, "catalog.objects.few"),
+                _ => BelarusHeritage.Localization.UiText.T(Context, "catalog.objects.many")
+            };
+        }
+    }
+
+    // localization is centralized in BelarusHeritage.Localization.UiText
+}

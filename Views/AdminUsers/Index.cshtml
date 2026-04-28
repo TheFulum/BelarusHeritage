@@ -1,0 +1,136 @@
+@model BelarusHeritage.Models.ViewModels.AdminUsersViewModel
+@{
+    Layout = "_AdminLayout";
+    Func<string, string> L = key => BelarusHeritage.Localization.UiText.T(Context, $"admin.users.index.{key}");
+    ViewData["Title"] = BelarusHeritage.Localization.UiText.T(Context, "admin.nav.users");
+    int TotalPages = Model.PageSize > 0 ? (int)Math.Ceiling((double)Model.TotalCount / Model.PageSize) : 1;
+}
+
+<div class="admin-page-header">
+    <h1 class="admin-page-title">@BelarusHeritage.Localization.UiText.T(Context, "admin.nav.users")</h1>
+    <div class="admin-page-breadcrumb">
+        <a href="/AdminDashboard">@BelarusHeritage.Localization.UiText.T(Context, "admin.nav.dashboard")</a>
+        <span class="sep">/</span>
+        <span>@BelarusHeritage.Localization.UiText.T(Context, "admin.nav.users")</span>
+    </div>
+</div>
+
+<!-- Filters -->
+<form method="get" class="admin-card mb-3">
+    <div class="admin-card-body py-3">
+        <div class="row g-2 align-items-end">
+            <div class="col-md-3">
+                <input type="text" name="search" class="form-control form-control-sm"
+                       placeholder="@BelarusHeritage.Localization.UiText.T(Context, "admin.users.searchPh")" value="@Model.Search">
+            </div>
+            <div class="col-md-2">
+                <select name="role" class="form-select form-select-sm">
+                    <option value="">@L("allRoles")</option>
+                    <option value="user" selected="@(Model.Role=="user"?"selected":null)">user</option>
+                    <option value="moderator" selected="@(Model.Role=="moderator"?"selected":null)">moderator</option>
+                    <option value="admin" selected="@(Model.Role=="admin"?"selected":null)">admin</option>
+                </select>
+            </div>
+            <div class="col-auto d-flex gap-2">
+                <button type="submit" class="btn btn-sm btn-secondary">@L("apply")</button>
+                <a href="/AdminUsers" class="btn btn-sm btn-outline-secondary">@L("reset")</a>
+            </div>
+        </div>
+    </div>
+</form>
+
+<div class="text-muted mb-2" style="font-size:.82rem;">@L("found"): <strong>@Model.TotalCount</strong></div>
+
+<div class="admin-card">
+    <div class="table-responsive">
+        <table class="table admin-table mb-0">
+            <thead>
+                <tr>
+                    <th style="width:40px;"></th>
+                    <th>@L("col.emailName")</th>
+                    <th>@L("col.role")</th>
+                    <th>@L("col.registered")</th>
+                    <th>@L("col.status")</th>
+                    <th style="width:80px;"></th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var u in Model.Users)
+                {
+                    <tr>
+                        <td>
+                            @if (!string.IsNullOrEmpty(u.AvatarUrl))
+                            {
+                                <img src="@u.AvatarUrl" style="width:32px;height:32px;border-radius:50%;object-fit:cover;">
+                            }
+                            else
+                            {
+                                <div style="width:32px;height:32px;border-radius:50%;background:#8B1A2A;display:flex;align-items:center;justify-content:center;color:#fff;font-size:.75rem;font-weight:600;">
+                                    @(u.DisplayName?.FirstOrDefault() ?? u.UserName?.FirstOrDefault() ?? 'U')
+                                </div>
+                            }
+                        </td>
+                        <td>
+                            <div style="font-weight:500; font-size:.875rem;">@(u.DisplayName ?? u.UserName)</div>
+                            <div style="font-size:.78rem; color:#9ca3af;">@u.Email</div>
+                        </td>
+                        <td>
+                            <span class="badge @RoleBadge(u.Role)" style="font-size:.72rem;">@(u.Role ?? "user")</span>
+                        </td>
+                        <td style="font-size:.8rem; color:#6b7280;">@u.CreatedAt.ToString("dd.MM.yyyy")</td>
+                        <td>
+                            @if (u.IsActive)
+                            {
+                                <span class="badge bg-success" style="font-size:.72rem;">@L("active")</span>
+                            }
+                            else
+                            {
+                                <span class="badge bg-secondary" style="font-size:.72rem;">@L("blocked")</span>
+                            }
+                        </td>
+                        <td class="text-end">
+                            <a href="/AdminUsers/Details/@u.Id" class="btn btn-sm btn-outline-secondary btn-icon">
+                                <i class="bi bi-eye"></i>
+                            </a>
+                        </td>
+                    </tr>
+                }
+                @if (!Model.Users.Any())
+                {
+                    <tr>
+                        <td colspan="6" class="text-center text-muted py-5">
+                            <i class="bi bi-people" style="font-size:2rem; display:block; margin-bottom:8px;"></i>
+                            @L("empty")
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+
+    @if (TotalPages > 1)
+    {
+        <div class="admin-card-body pt-0">
+            <nav>
+                <ul class="pagination pagination-sm justify-content-center mb-0">
+                    @for (int p = 1; p <= TotalPages; p++)
+                    {
+                        var active = p == Model.CurrentPage ? "active" : "";
+                        <li class="page-item @active">
+                            <a class="page-link"
+                               href="@Url.Action("Index", new { page = p, search = Model.Search, role = Model.Role })">@p</a>
+                        </li>
+                    }
+                </ul>
+            </nav>
+        </div>
+    }
+</div>
+
+@functions {
+    string RoleBadge(string? role) => role switch {
+        "admin"     => "bg-danger",
+        "moderator" => "bg-info text-dark",
+        _           => "bg-light text-dark border"
+    };
+}
