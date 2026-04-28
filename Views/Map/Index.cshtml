@@ -1,0 +1,284 @@
+@model BelarusHeritage.Models.ViewModels.MapViewModel
+@{
+    var lang = BelarusHeritage.Localization.UiText.Lang(Context);
+    ViewData["Title"] = BelarusHeritage.Localization.UiText.T(Context, "map.pageTitle");
+    string NameOf(string ru, string be, string en) => lang == "en" ? en : lang == "be" ? be : ru;
+}
+
+@section Styles {
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+    <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css">
+    <style>
+        main.main-content { padding-bottom: 0 !important; }
+        .map-page { display: flex; flex-direction: column; height: calc(100vh - var(--header-total-height)); min-height: 500px; }
+
+        .map-toolbar {
+            background: #fff;
+            border-bottom: 1px solid #e5e9f0;
+            margin-top: 14px;
+            padding: 12px 0;
+            flex-shrink: 0;
+            z-index: 10;
+        }
+        .map-toolbar .form-select, .map-toolbar .form-control {
+            font-size: .85rem;
+            border-color: #d1d5db;
+        }
+        .map-check-label { font-size: .85rem; color: #374151; cursor: pointer; user-select: none; }
+
+        .map-canvas-wrap { position: relative; flex: 1; display: flex; min-height: 320px; }
+        #map { flex: 1; width: 100%; height: 100%; z-index: 1; }
+
+        /* Custom marker */
+        .map-marker {
+            display: flex; align-items: center; justify-content: center;
+            width: 34px; height: 34px;
+            border-radius: 50% 50% 50% 0;
+            transform: rotate(-45deg);
+            border: 2px solid rgba(0,0,0,.18);
+            box-shadow: 0 2px 6px rgba(0,0,0,.25);
+        }
+        .map-marker i {
+            transform: rotate(45deg);
+            font-size: 14px;
+            color: #fff;
+        }
+
+        /* Popup */
+        .leaflet-popup-content-wrapper { border-radius: 10px; padding: 0; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,.15); }
+        .leaflet-popup-content { margin: 0; width: 240px !important; }
+        .map-popup { font-family: 'Inter', sans-serif; }
+        .map-popup-img { width: 100%; height: 130px; object-fit: cover; display: block; }
+        .map-popup-body { padding: 12px 14px 14px; }
+        .map-popup-title { font-size: .9rem; font-weight: 600; color: #1a202c; margin-bottom: 4px; line-height: 1.3; }
+        .map-popup-desc { font-size: .78rem; color: #6b7280; line-height: 1.4; margin-bottom: 10px;
+                          display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+        .map-popup-link {
+            display: inline-block;
+            font-size: .78rem; font-weight: 600;
+            color: #8B1A2A; text-decoration: none;
+            border: 1.5px solid #8B1A2A; border-radius: 5px;
+            padding: 3px 10px;
+        }
+        .map-popup-link:hover { background: #8B1A2A; color: #fff; }
+
+        /* Count badge */
+        #markerCount { font-size: .82rem; color: #6b7280; }
+
+        /* Cluster-like loading overlay */
+        .map-loading {
+            position: absolute; inset: 0; background: rgba(255,255,255,.6);
+            display: flex; align-items: center; justify-content: center;
+            z-index: 500; pointer-events: none;
+        }
+        .map-loading-box {
+            display: inline-flex;
+            align-items: center;
+            gap: 9px;
+            background: rgba(17,24,39,.93);
+            color: #fff;
+            border-radius: 999px;
+            padding: 10px 14px;
+            font-size: .85rem;
+            font-weight: 700;
+            box-shadow: 0 10px 24px rgba(0,0,0,.24);
+        }
+        .map-loading-spinner {
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            border: 2px solid rgba(255,255,255,.35);
+            border-top-color: #fff;
+            animation: mapSpin .8s linear infinite;
+        }
+        @@keyframes mapSpin { to { transform: rotate(360deg); } }
+    </style>
+}
+
+<div class="map-page">
+    <!-- Toolbar -->
+    <div class="map-toolbar">
+        <div class="container">
+            <div class="row g-2 align-items-center">
+                <div class="col-auto">
+                    <span style="font-size:.875rem; font-weight:600; color:#1a202c;">@BelarusHeritage.Localization.UiText.T(Context, "map.pageTitle")</span>
+                </div>
+                <div class="col-md-2">
+                    <select id="filterCategory" class="form-select form-select-sm">
+                        <option value="">@BelarusHeritage.Localization.UiText.T(Context, "map.filter.allCategories")</option>
+                        @foreach (var c in Model.Categories)
+                        {
+                            <option value="@c.Id">@NameOf(c.NameRu, c.NameBe, c.NameEn)</option>
+                        }
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <select id="filterRegion" class="form-select form-select-sm">
+                        <option value="">@BelarusHeritage.Localization.UiText.T(Context, "map.filter.allRegions")</option>
+                        @foreach (var r in Model.Regions)
+                        {
+                            <option value="@r.Id">@NameOf(r.NameRu, r.NameBe, r.NameEn)</option>
+                        }
+                    </select>
+                </div>
+                <div class="col-auto">
+                    <div class="form-check mb-0">
+                        <input class="form-check-input" type="checkbox" id="filterVisitable">
+                        <label class="map-check-label form-check-label" for="filterVisitable">
+                            @BelarusHeritage.Localization.UiText.T(Context, "map.filter.visitable")
+                        </label>
+                    </div>
+                </div>
+                <div class="col-auto ms-auto">
+                    <span id="markerCount"></span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Map -->
+    <div class="map-canvas-wrap">
+        <div id="map"></div>
+        <div class="map-loading d-none" id="mapLoading">
+            <div class="map-loading-box">
+                <span class="map-loading-spinner" aria-hidden="true"></span>
+                <span>@BelarusHeritage.Localization.UiText.T(Context, "map.loading")</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+<script src="https://unpkg.com/@@maplibre/maplibre-gl-leaflet@0.1.2/leaflet-maplibre-gl.js"></script>
+<script>
+const lang = '@lang';
+const i18n = {
+    details: '@BelarusHeritage.Localization.UiText.T(Context, "map.details")',
+    countObjects: '@BelarusHeritage.Localization.UiText.T(Context, "map.count.objects")',
+    loading: '@BelarusHeritage.Localization.UiText.T(Context, "map.loading")'
+};
+
+const map = L.map('map', {
+    center: [53.7, 27.9],
+    zoom: 7,
+    zoomControl: true,
+    attributionControl: false
+});
+
+let baseMapLayer = null;
+initializeBaseMap();
+
+async function initializeBaseMap() {
+    try {
+        const style = await loadLocalizedStyle(lang);
+        if (!window.maplibregl || typeof L.maplibreGL !== 'function') throw new Error('maplibre_missing');
+        baseMapLayer = L.maplibreGL({
+            style,
+            maplibreOptions: { attributionControl: false }
+        }).addTo(map);
+    } catch {
+        baseMapLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '',
+            maxZoom: 19
+        }).addTo(map);
+    }
+}
+
+async function loadLocalizedStyle(siteLang) {
+    const response = await fetch('https://tiles.openfreemap.org/styles/liberty');
+    if (!response.ok) throw new Error('style_fetch_failed');
+    const style = await response.json();
+
+    const normalizedLang = siteLang === 'en' ? 'en' : siteLang === 'ru' ? 'ru' : 'be';
+    const fallback = normalizedLang === 'be'
+        ? ['name:be', 'name_be', 'name:ru', 'name_ru', 'name:en', 'name_en', 'name']
+        : [`name:${normalizedLang}`, `name_${normalizedLang}`, 'name:en', 'name_en', 'name'];
+
+    (style.layers || []).forEach(layer => {
+        if (!layer?.layout || !layer.layout['text-field']) return;
+        const currentTextField = layer.layout['text-field'];
+        if (JSON.stringify(currentTextField) === JSON.stringify(['to-string', ['get', 'ref']])) return;
+        layer.layout['text-field'] = ['coalesce', ...fallback.map(k => ['get', k]), currentTextField];
+    });
+
+    return style;
+}
+
+let markersLayer = L.layerGroup().addTo(map);
+
+function makeIcon(color, iconClass) {
+    const bg = color || '#8B1A2A';
+    const ic = iconClass || 'bi-building';
+    return L.divIcon({
+        className: '',
+        html: `<div class="map-marker" style="background:${bg}"><i class="bi ${ic}"></i></div>`,
+        iconSize: [34, 34],
+        iconAnchor: [17, 34],
+        popupAnchor: [0, -36]
+    });
+}
+
+function makePopup(m) {
+    const img = m.imageUrl
+        ? `<img class="map-popup-img" src="${m.imageUrl}" alt="${esc(m.name)}" loading="lazy">`
+        : `<div style="height:80px;background:#f3f0ea;display:flex;align-items:center;justify-content:center;">
+               <i class="bi bi-image" style="font-size:2rem;color:#d1d5db;"></i>
+           </div>`;
+    const desc = m.shortDesc ? `<div class="map-popup-desc">${esc(m.shortDesc)}</div>` : '';
+    return `<div class="map-popup">
+        ${img}
+        <div class="map-popup-body">
+            <div class="map-popup-title">${esc(m.name)}</div>
+            ${desc}
+            <a href="/Object/Detail?slug=${m.slug}" class="map-popup-link">${esc(i18n.details)} →</a>
+        </div>
+    </div>`;
+}
+
+function esc(s) {
+    if (!s) return '';
+    return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+async function loadMarkers() {
+    const cat = document.getElementById('filterCategory').value;
+    const reg = document.getElementById('filterRegion').value;
+    const vis = document.getElementById('filterVisitable').checked;
+
+    const params = new URLSearchParams();
+    if (cat) params.set('category', cat);
+    if (reg) params.set('region', reg);
+    if (vis) params.set('visitable', 'true');
+    params.set('culture', lang);
+
+    document.getElementById('mapLoading').classList.remove('d-none');
+    markersLayer.clearLayers();
+
+    try {
+        const res = await fetch('/Map/GetMarkers?' + params.toString(), { credentials: 'same-origin' });
+        const data = await res.json();
+
+        data.forEach(m => {
+            const marker = L.marker([parseFloat(m.lat), parseFloat(m.lng)], {
+                icon: makeIcon(m.colorHex, m.iconClass)
+            });
+            marker.bindPopup(makePopup(m), { maxWidth: 240, minWidth: 240 });
+            markersLayer.addLayer(marker);
+        });
+
+        const tmpl = String(i18n.countObjects || '{0}');
+        document.getElementById('markerCount').textContent = tmpl.replace('{0}', String((data || []).length));
+    } finally {
+        document.getElementById('mapLoading').classList.add('d-none');
+    }
+}
+
+document.getElementById('filterCategory').addEventListener('change', loadMarkers);
+document.getElementById('filterRegion').addEventListener('change', loadMarkers);
+document.getElementById('filterVisitable').addEventListener('change', loadMarkers);
+
+loadMarkers();
+</script>
+}

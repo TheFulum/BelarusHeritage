@@ -1,0 +1,116 @@
+<header class="site-header">
+@using BelarusHeritage.Localization
+    <!-- Top bar -->
+    <div class="top-bar">
+        <div class="container">
+            <div class="d-flex justify-content-end align-items-center gap-3">
+                <!-- Language Switcher -->
+                <div class="lang-switcher">
+                    <a href="@Url.Action("SetLanguage", "Home", new { culture = "ru" })"
+                       class="lang-btn @(UiText.Is(Context, "ru") ? "active" : "")">RU</a>
+                    <a href="@Url.Action("SetLanguage", "Home", new { culture = "be" })"
+                       class="lang-btn @(UiText.Is(Context, "be") ? "active" : "")">BE</a>
+                    <a href="@Url.Action("SetLanguage", "Home", new { culture = "en" })"
+                       class="lang-btn @(UiText.Is(Context, "en") ? "active" : "")">EN</a>
+                </div>
+
+                @if (User.Identity?.IsAuthenticated == true)
+                {
+                    <div class="dropdown">
+                        <a class="user-menu-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
+                            <i class="bi bi-person-circle"></i>
+                            <span>@User.Identity.Name</span>
+                        </a>
+                        <ul class="dropdown-menu dropdown-menu-end">
+                            <li><a class="dropdown-item" href="@Url.Action("Index", "Profile")">@UiText.T(Context, "auth.profile")</a></li>
+                            @if (User.IsInRole("admin") || User.IsInRole("moderator"))
+                            {
+                                <li><a class="dropdown-item" href="@Url.Action("Index", "AdminDashboard")"><i class="bi bi-speedometer2 me-2"></i>@UiText.T(Context, "auth.adminPanel")</a></li>
+                            }
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item" href="@Url.Action("Logout", "Auth")">@UiText.T(Context, "auth.logout")</a></li>
+                        </ul>
+                    </div>
+                }
+                else
+                {
+                    <a href="@Url.Action("Login", "Auth")" class="auth-link">@UiText.T(Context, "auth.login")</a>
+                    <a href="@Url.Action("Register", "Auth")" class="btn btn-sm btn-outline-light">@UiText.T(Context, "auth.register")</a>
+                }
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Navigation -->
+    <nav class="navbar navbar-expand-lg main-nav">
+        <div class="container">
+            <!-- Logo -->
+            <a class="navbar-brand" href="@Url.Action("Index", "Home")">
+                <svg class="brand-icon" viewBox="0 0 100 100" width="40" height="40">
+                    <defs>
+                        <linearGradient id="brandGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                            <stop offset="0%" style="stop-color:#8B1A2A"/>
+                            <stop offset="100%" style="stop-color:#C68B2A"/>
+                        </linearGradient>
+                    </defs>
+                    <path fill="url(#brandGrad)" d="M50 5 L85 30 L85 70 L50 95 L15 70 L15 30 Z"/>
+                    <path fill="white" d="M50 20 L70 35 L70 60 L50 75 L30 60 L30 35 Z"/>
+                </svg>
+                <span class="brand-text">
+                    <span class="brand-title">@UiText.T(Context, "site.name")</span>
+                    <span class="brand-subtitle">@UiText.T(Context, "site.subtitle")</span>
+                </span>
+            </a>
+
+            <!-- Mobile toggle -->
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#mainNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+
+            <!-- Navigation -->
+            <div class="collapse navbar-collapse" id="mainNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="@Url.Action("Index", "Home")">@UiText.T(Context, "nav.home")</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="@Url.Action("Index", "Catalog")">@UiText.T(Context, "nav.catalog")</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="@Url.Action("Index", "Map")">@UiText.T(Context, "nav.map")</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="@Url.Action("Index", "Timeline")">@UiText.T(Context, "nav.timeline")</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="@Url.Action("Index", "Quiz")">@UiText.T(Context, "nav.quizzes")</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="@Url.Action("Public", "RouteBuilder")">@UiText.T(Context, "nav.routesPublic")</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="@Url.Action("Index", "Ornament")">@UiText.T(Context, "nav.ornament")</a>
+                    </li>
+                </ul>
+
+                <!-- Search -->
+                <form class="search-form" action="@Url.RouteUrl("SearchPretty")" method="get">
+                    <div class="input-group">
+                        <input type="text" name="q" class="form-control" placeholder="@UiText.T(Context, "search.placeholder")">
+                        <button class="btn btn-outline-secondary" type="submit">
+                            <i class="bi bi-search"></i>
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Ornament Divider -->
+    <div class="ornament-divider">
+        <svg viewBox="0 0 1200 30" preserveAspectRatio="none">
+            <path d="M0,15 Q150,0 300,15 T600,15 T900,15 T1200,15 V30 H0 Z" fill="#F9F4EB"/>
+            <path d="M0,15 Q150,30 300,15 T600,15 T900,15 T1200,15 V30 H0 Z" fill="#8B1A2A" opacity="0.1"/>
+        </svg>
+    </div>
+</header>

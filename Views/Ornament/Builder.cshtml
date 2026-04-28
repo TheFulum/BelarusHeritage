@@ -1,0 +1,785 @@
+@{
+    ViewData["Title"] = BelarusHeritage.Localization.UiText.T(Context, "ornament.builder.title");
+    var lang = BelarusHeritage.Localization.UiText.Lang(Context);
+}
+
+@section Styles {
+    <style>
+        /* ── Page layout ─────────────────────────────────────── */
+        .builder-page {
+            padding: var(--space-xl) 0 var(--space-xxl);
+            background: var(--color-bg);
+        }
+        .builder-header {
+            display: flex;
+            flex-wrap: wrap;
+            gap: var(--space-md);
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: var(--space-lg);
+        }
+        .builder-header-info {
+            flex: 1 1 240px;
+            min-width: 0;
+        }
+        .builder-title {
+            font-family: var(--font-heading);
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--color-text);
+            margin: 0;
+            line-height: 1.15;
+        }
+        .builder-subtitle {
+            color: var(--color-text-secondary);
+            font-size: .9rem;
+            margin: 4px 0 0;
+        }
+        .builder-actions {
+            display: flex;
+            gap: var(--space-sm);
+            flex-wrap: wrap;
+            flex-shrink: 0;
+        }
+        @@media (max-width: 575.98px) {
+            .builder-title { font-size: 1.5rem; }
+            .builder-actions { width: 100%; }
+            .builder-actions .btn { flex: 1 1 calc(50% - var(--space-sm)); }
+        }
+
+        /* ── Shell: sidebar + canvas ────────────────────────── */
+        .builder-shell {
+            display: grid;
+            grid-template-columns: 260px 1fr;
+            gap: var(--space-lg);
+            align-items: flex-start;
+        }
+        .builder-sidebar {
+            background: var(--color-bg-card);
+            border: 1px solid var(--color-border);
+            border-radius: var(--radius-lg);
+            padding: var(--space-lg);
+            position: sticky;
+            top: calc(var(--header-total-height) + var(--space-md));
+            box-shadow: var(--shadow-sm);
+            min-height: 200px;
+        }
+        .sidebar-section {
+            padding-bottom: var(--space-md);
+            margin-bottom: var(--space-md);
+            border-bottom: 1px solid var(--color-border);
+        }
+        .sidebar-section:last-child {
+            padding-bottom: 0;
+            margin-bottom: 0;
+            border-bottom: none;
+        }
+        .sidebar-section-title {
+            font-size: .72rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: .04em;
+            color: var(--color-text-secondary);
+            margin: 0 0 var(--space-sm);
+        }
+        .sidebar-placeholder {
+            color: var(--color-text-secondary);
+            font-size: .85rem;
+            font-style: italic;
+        }
+
+        /* ── Color palette ─────────────────────────────────── */
+        .color-palette {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        .color-swatch {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            border: 2px solid transparent;
+            background: transparent;
+            padding: 0;
+            cursor: pointer;
+            transition: transform .15s, border-color .15s, box-shadow .15s;
+            position: relative;
+        }
+        .color-swatch::before {
+            content: "";
+            position: absolute;
+            inset: 2px;
+            border-radius: 50%;
+            background: var(--swatch-color, #888);
+        }
+        .color-swatch:hover {
+            transform: scale(1.1);
+        }
+        .color-swatch.active {
+            border-color: var(--color-text);
+            box-shadow: 0 0 0 2px var(--color-bg-card), 0 0 0 4px var(--color-text);
+        }
+
+        /* ── Custom color picker row ───────────────────────── */
+        .color-picker-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-top: 12px;
+        }
+        .color-picker-row input[type=color] {
+            width: 38px;
+            height: 38px;
+            border: 1px solid var(--color-border);
+            border-radius: 6px;
+            cursor: pointer;
+            padding: 2px;
+            background: var(--color-bg-card);
+        }
+        .color-picker-row label {
+            font-size: .82rem;
+            color: var(--color-text-secondary);
+            margin: 0;
+        }
+
+        /* ── Brush size slider ─────────────────────────────── */
+        .brush-slider-wrap {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .brush-slider-wrap input[type=range] {
+            flex: 1;
+            accent-color: var(--color-primary);
+            cursor: pointer;
+        }
+        .brush-size-value {
+            font-size: .82rem;
+            color: var(--color-text-secondary);
+            text-align: right;
+            font-variant-numeric: tabular-nums;
+        }
+
+        /* ── Tool toggle (brush / eraser) ──────────────────── */
+        .tool-buttons {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 8px;
+        }
+        .tool-btn {
+            min-width: 0;
+            padding: 9px 10px;
+            border: 1px solid var(--color-border);
+            background: var(--color-bg-card);
+            color: var(--color-text);
+            border-radius: var(--radius-md);
+            font-size: .85rem;
+            cursor: pointer;
+            transition: all var(--transition-fast);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            white-space: nowrap;
+        }
+        .tool-btn:hover {
+            border-color: var(--color-primary);
+            color: var(--color-primary);
+        }
+        .tool-btn.active {
+            background: var(--color-primary);
+            border-color: var(--color-primary);
+            color: white;
+        }
+        .tool-btn.active:hover {
+            color: white;
+        }
+
+        /* ── Pieces library ─────────────────────────────────── */
+        .pieces-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+        }
+        .piece-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            background: var(--color-bg);
+            border: 1px solid var(--color-border);
+            border-radius: var(--radius-md);
+            padding: 6px;
+            cursor: pointer;
+            color: var(--color-text-secondary);
+            transition: all var(--transition-fast);
+            aspect-ratio: 1;
+        }
+        .piece-btn:hover {
+            border-color: var(--color-primary);
+            color: var(--color-primary);
+            transform: translateY(-1px);
+        }
+        .piece-btn.active {
+            border-color: var(--color-primary);
+            color: var(--color-primary);
+            background: rgba(139, 26, 42, 0.06);
+            box-shadow: 0 0 0 1px var(--color-primary);
+        }
+        .piece-btn svg {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+
+        /* ── Canvas wrap ────────────────────────────────────── */
+        .builder-canvas-wrap {
+            background: var(--color-bg-card);
+            border: 1px solid var(--color-border);
+            border-radius: var(--radius-lg);
+            padding: var(--space-lg);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            box-shadow: var(--shadow-sm);
+            min-height: 500px;
+        }
+        #ornCanvas {
+            max-width: 100%;
+            height: auto;
+            border: 1px solid var(--color-border);
+            border-radius: var(--radius-md);
+            background: #F9F4EB;
+            box-shadow: 0 4px 18px rgba(0, 0, 0, .08);
+            cursor: crosshair;
+            touch-action: none;
+        }
+
+        /* ── Responsive ─────────────────────────────────────── */
+        @@media (max-width: 991px) {
+            .builder-shell {
+                grid-template-columns: 1fr;
+            }
+            .builder-sidebar {
+                position: static;
+            }
+        }
+    </style>
+}
+
+<section class="builder-page">
+    <div class="container">
+        <div class="builder-header">
+            <div class="builder-header-info">
+                <h1 class="builder-title">@Localize("title")</h1>
+                <p class="builder-subtitle">@Localize("subtitle")</p>
+            </div>
+            <div class="builder-actions">
+                <button type="button" class="btn btn-outline-secondary" id="btnUndo" disabled
+                        title="@Localize("btn.undoTitle")">
+                    <i class="bi bi-arrow-counterclockwise me-1"></i> @Localize("btn.undo")
+                </button>
+                <button type="button" class="btn btn-outline-secondary" id="btnClear">
+                    <i class="bi bi-eraser me-1"></i> @Localize("btn.clear")
+                </button>
+                <button type="button" class="btn btn-outline-primary" id="btnDownload">
+                    <i class="bi bi-download me-1"></i> @Localize("btn.download")
+                </button>
+                <button type="button" class="btn btn-primary" id="btnSave">
+                    <i class="bi bi-cloud-upload me-1"></i> @Localize("btn.save")
+                </button>
+            </div>
+        </div>
+
+        <div class="builder-shell">
+            <aside class="builder-sidebar">
+                <div class="sidebar-section">
+                    <h3 class="sidebar-section-title">@Localize("sidebar.color")</h3>
+                    <div class="color-palette">
+                        <button type="button" class="color-swatch active" data-color="#8B1A2A"
+                                style="--swatch-color:#8B1A2A" title="@Localize("color.red")" aria-label="@Localize("color.red")"></button>
+                        <button type="button" class="color-swatch" data-color="#1A1A1A"
+                                style="--swatch-color:#1A1A1A" title="@Localize("color.black")" aria-label="@Localize("color.black")"></button>
+                        <button type="button" class="color-swatch" data-color="#3B5E3F"
+                                style="--swatch-color:#3B5E3F" title="@Localize("color.green")" aria-label="@Localize("color.green")"></button>
+                        <button type="button" class="color-swatch" data-color="#1E3A5F"
+                                style="--swatch-color:#1E3A5F" title="@Localize("color.blue")" aria-label="@Localize("color.blue")"></button>
+                    </div>
+                    <div class="color-picker-row">
+                        <input type="color" id="customColor" value="#8B1A2A">
+                        <label for="customColor">@Localize("color.custom")</label>
+                    </div>
+                </div>
+
+                <div class="sidebar-section">
+                    <h3 class="sidebar-section-title">@Localize("sidebar.brushSize")</h3>
+                    <div class="brush-slider-wrap">
+                        <input type="range" id="brushSizeRange" min="1" max="40" value="6">
+                        <span class="brush-size-value" id="brushSizeValue">6</span>
+                    </div>
+                </div>
+
+                <div class="sidebar-section">
+                    <h3 class="sidebar-section-title">@Localize("sidebar.tool")</h3>
+                    <div class="tool-buttons">
+                        <button type="button" class="tool-btn active" data-tool="brush">
+                            <i class="bi bi-brush"></i> @Localize("tool.brush")
+                        </button>
+                        <button type="button" class="tool-btn" data-tool="pieces">
+                            <i class="bi bi-grid-3x3-gap"></i> @Localize("tool.pieces")
+                        </button>
+                        <button type="button" class="tool-btn" data-tool="eraser">
+                            <i class="bi bi-eraser"></i> @Localize("tool.eraser")
+                        </button>
+                    </div>
+                </div>
+
+                <div class="sidebar-section" id="piecesSection" style="display:none">
+                    <h3 class="sidebar-section-title">@Localize("sidebar.pieces")</h3>
+                    <div class="pieces-grid">
+                        <button type="button" class="piece-btn" data-piece="diamond" title="@Localize("piece.diamond")" aria-label="@Localize("piece.diamond")">
+                            <svg viewBox="-30 -30 60 60" aria-hidden="true">
+                                <path d="M 0 -25 L 25 0 L 0 25 L -25 0 Z" fill="currentColor"/>
+                            </svg>
+                        </button>
+                        <button type="button" class="piece-btn" data-piece="cross" title="@Localize("piece.cross")" aria-label="@Localize("piece.cross")">
+                            <svg viewBox="-30 -30 60 60" aria-hidden="true">
+                                <path d="M -8 -25 L 8 -25 L 8 -8 L 25 -8 L 25 8 L 8 8 L 8 25 L -8 25 L -8 8 L -25 8 L -25 -8 L -8 -8 Z" fill="currentColor"/>
+                            </svg>
+                        </button>
+                        <button type="button" class="piece-btn" data-piece="star" title="@Localize("piece.star")" aria-label="@Localize("piece.star")">
+                            <svg viewBox="-30 -30 60 60" aria-hidden="true">
+                                <path d="M 0 -25 L 7 -8 L 25 -8 L 11 3 L 16 22 L 0 11 L -16 22 L -11 3 L -25 -8 L -7 -8 Z" fill="currentColor"/>
+                            </svg>
+                        </button>
+                        <button type="button" class="piece-btn" data-piece="flower" title="@Localize("piece.flower")" aria-label="@Localize("piece.flower")">
+                            <svg viewBox="-30 -30 60 60" aria-hidden="true">
+                                <path d="M 0 -22 Q 14 -10 0 0 Q 14 10 0 22 Q -14 10 0 0 Q -14 -10 0 -22 Z M -22 0 Q -10 -14 0 0 Q -10 14 -22 0 Z M 22 0 Q 10 -14 0 0 Q 10 14 22 0 Z" fill="currentColor"/>
+                            </svg>
+                        </button>
+                        <button type="button" class="piece-btn" data-piece="circle" title="@Localize("piece.circle")" aria-label="@Localize("piece.circle")">
+                            <svg viewBox="-30 -30 60 60" aria-hidden="true">
+                                <circle cx="0" cy="0" r="22" fill="currentColor"/>
+                            </svg>
+                        </button>
+                        <button type="button" class="piece-btn" data-piece="ring" title="@Localize("piece.ring")" aria-label="@Localize("piece.ring")">
+                            <svg viewBox="-30 -30 60 60" aria-hidden="true">
+                                <circle cx="0" cy="0" r="22" fill="none" stroke="currentColor" stroke-width="6"/>
+                            </svg>
+                        </button>
+                    </div>
+                    <div class="form-text small mt-2">@Localize("pieces.hint")</div>
+                </div>
+
+                <div class="sidebar-section">
+                    <h3 class="sidebar-section-title">@Localize("sidebar.symmetry")</h3>
+                    <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" id="symmetryToggle" role="switch">
+                        <label class="form-check-label" for="symmetryToggle">@Localize("symmetry.vertical")</label>
+                    </div>
+                    <div class="form-text small mt-1">@Localize("symmetry.hint")</div>
+                </div>
+            </aside>
+
+            <main class="builder-canvas-wrap">
+                <canvas id="ornCanvas" width="720" height="720" aria-label="@Localize("title")"></canvas>
+            </main>
+        </div>
+    </div>
+</section>
+
+<!-- Clear confirm modal -->
+<div class="modal fade" id="clearOrnamentModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-sm">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">@Localize("clear.title")</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p class="mb-0">@Localize("clear.body")</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
+                    @Localize("clear.cancel")
+                </button>
+                <button type="button" class="btn btn-danger" id="btnClearConfirm">
+                    <i class="bi bi-eraser me-1"></i> @Localize("clear.confirm")
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Save modal -->
+<div class="modal fade" id="saveOrnamentModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">@Localize("save.title")</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label for="ornamentTitle" class="form-label">@Localize("save.titleField")</label>
+                    <input type="text" class="form-control" id="ornamentTitle" maxlength="100"
+                           placeholder="@Localize("save.titlePh")">
+                    <div class="form-text">@Localize("save.titleHint")</div>
+                </div>
+                <div id="saveOrnamentError" class="alert alert-danger d-none mb-0" role="alert"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
+                    @Localize("save.cancel")
+                </button>
+                <button type="button" class="btn btn-primary" id="btnSaveConfirm">
+                    <span id="saveSpinner" class="spinner-border spinner-border-sm d-none me-2" aria-hidden="true"></span>
+                    @Localize("save.confirm")
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+    (function () {
+        'use strict';
+
+        const LINEN = '#F9F4EB';
+        const canvas = document.getElementById('ornCanvas');
+        const ctx = canvas.getContext('2d');
+
+        // Mutable state shared with later steps
+        const state = {
+            color: '#8B1A2A',
+            brushSize: 6,
+            mode: 'brush',          // 'brush' | 'pieces' | 'eraser'
+            symmetry: false,
+            selectedPiece: null     // 'diamond' | 'cross' | 'star' | 'flower' | 'circle' | 'ring'
+        };
+
+        // The colour actually being painted right now (LINEN when eraser is on).
+        const drawColor = () => state.mode === 'eraser' ? LINEN : state.color;
+
+        // ── Pieces library — SVG path data, designed for a -25..25 box ────
+        const PIECES = {
+            diamond: 'M 0 -25 L 25 0 L 0 25 L -25 0 Z',
+            cross:   'M -8 -25 L 8 -25 L 8 -8 L 25 -8 L 25 8 L 8 8 L 8 25 L -8 25 L -8 8 L -25 8 L -25 -8 L -8 -8 Z',
+            star:    'M 0 -25 L 7 -8 L 25 -8 L 11 3 L 16 22 L 0 11 L -16 22 L -11 3 L -25 -8 L -7 -8 Z',
+            flower:  'M 0 -22 Q 14 -10 0 0 Q 14 10 0 22 Q -14 10 0 0 Q -14 -10 0 -22 Z M -22 0 Q -10 -14 0 0 Q -10 14 -22 0 Z M 22 0 Q 10 -14 0 0 Q 10 14 22 0 Z',
+            circle:  'M -22 0 a 22 22 0 1 0 44 0 a 22 22 0 1 0 -44 0 Z',
+            ring:    null   // drawn imperatively (stroke only)
+        };
+
+        function placePiece(pieceName, x, y) {
+            // Brush size 6 = 1× scale, brush size 40 = ~6.7× scale.
+            const scale = state.brushSize / 6;
+            ctx.save();
+            ctx.translate(x, y);
+            ctx.scale(scale, scale);
+            ctx.fillStyle = drawColor();
+            ctx.strokeStyle = drawColor();
+
+            if (pieceName === 'ring') {
+                ctx.lineWidth = 6;
+                ctx.beginPath();
+                ctx.arc(0, 0, 22, 0, Math.PI * 2);
+                ctx.stroke();
+            } else {
+                const path = new Path2D(PIECES[pieceName]);
+                ctx.fill(path);
+            }
+            ctx.restore();
+        }
+
+        function placePieceWithSymmetry(pieceName, x, y) {
+            placePiece(pieceName, x, y);
+            if (state.symmetry) placePiece(pieceName, mirrorX(x), y);
+        }
+
+        function fillLinen() {
+            ctx.fillStyle = LINEN;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+        }
+
+        fillLinen();
+
+        // ── Undo stack (snapshot-based, max 30) ───────────────────────────
+        const UNDO_LIMIT = 30;
+        const undoStack = [];
+        const btnUndoEl = document.getElementById('btnUndo');
+
+        function pushUndo() {
+            undoStack.push(canvas.toDataURL());
+            if (undoStack.length > UNDO_LIMIT) undoStack.shift();
+            btnUndoEl.disabled = false;
+        }
+
+        function popUndo() {
+            if (!undoStack.length) return;
+            const dataUrl = undoStack.pop();
+            const img = new Image();
+            img.onload = () => {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                ctx.drawImage(img, 0, 0);
+            };
+            img.src = dataUrl;
+            btnUndoEl.disabled = undoStack.length === 0;
+        }
+
+        // ── Coordinate helper (canvas display size ≠ internal size) ───────
+        function getPos(e) {
+            const rect = canvas.getBoundingClientRect();
+            return {
+                x: (e.clientX - rect.left) * (canvas.width / rect.width),
+                y: (e.clientY - rect.top) * (canvas.height / rect.height)
+            };
+        }
+
+        // ── Brush drawing ──────────────────────────────────────────────────
+        let drawing = false;
+        let lastX = 0, lastY = 0;
+
+        // Returns the X-coordinate mirrored across the vertical axis of the canvas.
+        const mirrorX = (x) => canvas.width - x;
+
+        function paintDot(x, y) {
+            ctx.fillStyle = drawColor();
+            ctx.beginPath();
+            ctx.arc(x, y, state.brushSize / 2, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        function paintSegment(x1, y1, x2, y2) {
+            ctx.lineWidth = state.brushSize;
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+            ctx.strokeStyle = drawColor();
+            ctx.beginPath();
+            ctx.moveTo(x1, y1);
+            ctx.lineTo(x2, y2);
+            ctx.stroke();
+        }
+
+        function startStroke(e) {
+            const p = getPos(e);
+
+            // Pieces mode: single stamp per click — no continuous draw
+            if (state.mode === 'pieces') {
+                if (!state.selectedPiece) return;
+                pushUndo();
+                placePieceWithSymmetry(state.selectedPiece, p.x, p.y);
+                return;
+            }
+
+            // Brush / eraser: snapshot BEFORE modifying so undo restores pre-stroke state.
+            pushUndo();
+            drawing = true;
+            lastX = p.x;
+            lastY = p.y;
+            paintDot(p.x, p.y);
+            if (state.symmetry) paintDot(mirrorX(p.x), p.y);
+        }
+
+        function continueStroke(e) {
+            if (!drawing) return;
+            const p = getPos(e);
+            paintSegment(lastX, lastY, p.x, p.y);
+            if (state.symmetry) paintSegment(mirrorX(lastX), lastY, mirrorX(p.x), p.y);
+            lastX = p.x;
+            lastY = p.y;
+        }
+
+        function endStroke() { drawing = false; }
+
+        canvas.addEventListener('mousedown', startStroke);
+        canvas.addEventListener('mousemove', continueStroke);
+        canvas.addEventListener('mouseup', endStroke);
+        canvas.addEventListener('mouseleave', endStroke);
+
+        // ── Color palette ─────────────────────────────────────────────────
+        const customColor = document.getElementById('customColor');
+
+        document.querySelectorAll('.color-swatch').forEach(sw => {
+            sw.addEventListener('click', () => {
+                state.color = sw.dataset.color;
+                document.querySelectorAll('.color-swatch').forEach(s => s.classList.remove('active'));
+                sw.classList.add('active');
+                customColor.value = sw.dataset.color;
+                // Picking a colour implies switching out of the eraser.
+                if (state.mode === 'eraser') setTool('brush');
+            });
+        });
+
+        customColor.addEventListener('input', () => {
+            state.color = customColor.value;
+            document.querySelectorAll('.color-swatch').forEach(s => s.classList.remove('active'));
+            if (state.mode === 'eraser') setTool('brush');
+        });
+
+        // ── Brush size slider ─────────────────────────────────────────────
+        const brushRange = document.getElementById('brushSizeRange');
+        const brushValueEl = document.getElementById('brushSizeValue');
+        brushRange.addEventListener('input', () => {
+            state.brushSize = parseInt(brushRange.value, 10);
+            brushValueEl.textContent = brushRange.value;
+        });
+
+        // ── Tool toggle (brush / pieces / eraser) ─────────────────────────
+        const piecesSection = document.getElementById('piecesSection');
+
+        function setTool(tool) {
+            state.mode = tool;
+            document.querySelectorAll('.tool-btn').forEach(b => {
+                b.classList.toggle('active', b.dataset.tool === tool);
+            });
+            canvas.style.cursor =
+                tool === 'eraser' ? 'cell' :
+                tool === 'pieces' ? 'copy' :
+                'crosshair';
+            piecesSection.style.display = (tool === 'pieces') ? '' : 'none';
+        }
+        document.querySelectorAll('.tool-btn').forEach(b => {
+            b.addEventListener('click', () => setTool(b.dataset.tool));
+        });
+
+        // ── Piece selection ───────────────────────────────────────────────
+        document.querySelectorAll('.piece-btn').forEach(b => {
+            b.addEventListener('click', () => {
+                state.selectedPiece = b.dataset.piece;
+                document.querySelectorAll('.piece-btn').forEach(x => x.classList.remove('active'));
+                b.classList.add('active');
+                // Selecting a piece implies switching to pieces mode.
+                if (state.mode !== 'pieces') setTool('pieces');
+            });
+        });
+
+        // ── Symmetry toggle ───────────────────────────────────────────────
+        document.getElementById('symmetryToggle').addEventListener('change', (e) => {
+            state.symmetry = e.target.checked;
+        });
+
+        // ── Header buttons ────────────────────────────────────────────────
+        const clearModalEl = document.getElementById('clearOrnamentModal');
+        let bsClearModal = null;
+
+        document.getElementById('btnClear').addEventListener('click', () => {
+            if (!bsClearModal) bsClearModal = new bootstrap.Modal(clearModalEl);
+            bsClearModal.show();
+        });
+
+        document.getElementById('btnClearConfirm').addEventListener('click', () => {
+            pushUndo();
+            fillLinen();
+            bsClearModal.hide();
+        });
+
+        document.getElementById('btnDownload').addEventListener('click', () => {
+            const link = document.createElement('a');
+            link.download = 'ornament-' + Date.now() + '.png';
+            link.href = canvas.toDataURL('image/png');
+            link.click();
+        });
+
+        btnUndoEl.addEventListener('click', popUndo);
+
+        // ── Save (auth-gated) ─────────────────────────────────────────────
+        const isAuth = @(User.Identity?.IsAuthenticated == true ? "true" : "false");
+        const btnSaveEl = document.getElementById('btnSave');
+        const saveModalEl = document.getElementById('saveOrnamentModal');
+        const titleInput = document.getElementById('ornamentTitle');
+        const btnSaveConfirm = document.getElementById('btnSaveConfirm');
+        const saveError = document.getElementById('saveOrnamentError');
+        const saveSpinner = document.getElementById('saveSpinner');
+        let bsSaveModal = null;
+
+        btnSaveEl.addEventListener('click', () => {
+            if (!isAuth) {
+                window.showConfirmModal?.({
+                    title: '@Localize("save.title")',
+                    message: '@Localize("save.needAuth")',
+                    confirmText: '@Localize("save.confirm")',
+                    cancelText: '@Localize("save.cancel")',
+                    confirmClass: 'btn-primary'
+                }).then((confirmed) => {
+                    if (confirmed) {
+                        window.location.href = '/Auth/Login?returnUrl=' + encodeURIComponent('/Ornament/Builder');
+                    }
+                });
+                return;
+            }
+            saveError.classList.add('d-none');
+            saveError.textContent = '';
+            titleInput.value = '';
+            if (!bsSaveModal) bsSaveModal = new bootstrap.Modal(saveModalEl);
+            bsSaveModal.show();
+            // Focus title field once the modal is shown
+            saveModalEl.addEventListener('shown.bs.modal', () => titleInput.focus(), { once: true });
+        });
+
+        btnSaveConfirm.addEventListener('click', async () => {
+            const title = titleInput.value.trim();
+            saveError.classList.add('d-none');
+            btnSaveConfirm.disabled = true;
+            saveSpinner.classList.remove('d-none');
+
+            try {
+                const imageData = canvas.toDataURL('image/png');
+                const body = new URLSearchParams();
+                body.set('title', title);
+                body.set('imageData', imageData);
+
+                const res = await fetch('/Ornament/SaveOrnament', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body
+                });
+                if (!res.ok) throw new Error('HTTP ' + res.status);
+                const data = await res.json();
+                if (data && data.success) {
+                    bsSaveModal.hide();
+                    window.location.href = '/Profile';
+                } else {
+                    saveError.textContent = (data && data.message) || '@Localize("save.error")';
+                    saveError.classList.remove('d-none');
+                }
+            } catch (err) {
+                saveError.textContent = '@Localize("save.error")';
+                saveError.classList.remove('d-none');
+            } finally {
+                btnSaveConfirm.disabled = false;
+                saveSpinner.classList.add('d-none');
+            }
+        });
+
+        // Allow Enter inside title to confirm save
+        titleInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                btnSaveConfirm.click();
+            }
+        });
+
+        // ── Keyboard: Ctrl+Z / Cmd+Z for undo ─────────────────────────────
+        document.addEventListener('keydown', (e) => {
+            if ((e.ctrlKey || e.metaKey) && !e.shiftKey && e.key.toLowerCase() === 'z') {
+                // Don't hijack typing inside inputs (e.g. the colour picker, save title).
+                const t = e.target;
+                if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return;
+                e.preventDefault();
+                popUndo();
+            }
+        });
+
+        // Expose to later steps (#29.6+) — they will mutate state and add hooks
+        window.__ornBuilder = { canvas, ctx, fillLinen, LINEN, state, pushUndo };
+    })();
+</script>
+}
+
+@functions {
+    private string Localize(string key)
+    {
+        return BelarusHeritage.Localization.UiText.T(Context, $"ornament.builder.{key}");
+    }
+}

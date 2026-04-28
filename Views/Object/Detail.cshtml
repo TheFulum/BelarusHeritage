@@ -1,0 +1,1023 @@
+@model BelarusHeritage.Models.ViewModels.ObjectDetailViewModel
+@{
+    var lang = Context.Request.Cookies["culture"] ?? "ru";
+    var obj = Model.Object;
+    var name = lang == "en" ? obj.NameEn : lang == "be" ? obj.NameBe : obj.NameRu;
+    var regionName = obj.Region == null ? "" :
+        (lang == "en" ? obj.Region.NameEn : lang == "be" ? obj.Region.NameBe : obj.Region.NameRu);
+    var categoryName = obj.Category == null ? "" :
+        (lang == "en" ? obj.Category.NameEn : lang == "be" ? obj.Category.NameBe : obj.Category.NameRu);
+    var archStyleName = obj.ArchStyle == null ? "" :
+        (lang == "en" ? obj.ArchStyle.NameEn : lang == "be" ? obj.ArchStyle.NameBe : obj.ArchStyle.NameRu);
+    ViewData["Title"] = name;
+
+    var preservationKey = obj.PreservationStatus switch
+    {
+        BelarusHeritage.Models.Domain.PreservationStatus.Preserved => "preservation.preserved",
+        BelarusHeritage.Models.Domain.PreservationStatus.Partial   => "preservation.partial",
+        BelarusHeritage.Models.Domain.PreservationStatus.Ruins     => "preservation.ruins",
+        BelarusHeritage.Models.Domain.PreservationStatus.Lost      => "preservation.lost",
+        _ => "preservation.preserved"
+    };
+    var preservationCls = obj.PreservationStatus.ToString().ToLowerInvariant();
+}
+
+@section Styles {
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+    <link href="~/css/pages/object-detail.css" rel="stylesheet">
+}
+
+<section class="detail-page">
+    <div class="container">
+        <!-- Breadcrumbs -->
+        <nav class="detail-breadcrumb" aria-label="breadcrumb">
+            <a href="@Url.Action("Index", "Home")">@Localize("nav.home")</a>
+            <span class="sep">›</span>
+            <a href="@Url.Action("Index", "Catalog")">@Localize("nav.catalog")</a>
+            @if (obj.Category != null)
+            {
+                <span class="sep">›</span>
+                <a href="@Url.Action("Index", "Catalog", new { category = obj.Category.Id })">@categoryName</a>
+            }
+            <span class="sep">›</span>
+            <span class="current">@name</span>
+        </nav>
+
+        <!-- Object header -->
+        <header class="detail-header">
+            <div class="detail-header-row">
+                @if (obj.Category != null)
+                {
+                    <span class="detail-cat-badge" style="background-color:@obj.Category.ColorHex">
+                        <i class="@obj.Category.IconClass"></i>
+                        <span>@categoryName</span>
+                    </span>
+                }
+                <span class="detail-preservation @preservationCls">
+                    <i class="bi bi-shield-check"></i>
+                    @Localize(preservationKey)
+                </span>
+            </div>
+
+            <h1 class="detail-title">@name</h1>
+
+            <div class="detail-meta">
+                @if (!string.IsNullOrEmpty(regionName))
+                {
+                    <span class="detail-meta-item">
+                        <i class="bi bi-geo-alt"></i> @regionName
+                    </span>
+                }
+                @if (obj.CenturyStart.HasValue)
+                {
+                    <span class="detail-meta-item">
+                        <i class="bi bi-clock-history"></i> @GetCenturyText(obj.CenturyStart, obj.CenturyEnd, lang)
+                    </span>
+                }
+                @if (!string.IsNullOrEmpty(archStyleName))
+                {
+                    <span class="detail-meta-item">
+                        <i class="bi bi-bank"></i> @archStyleName
+                    </span>
+                }
+                @if (obj.RatingCount > 0)
+                {
+                    <span class="detail-meta-item detail-meta-rating">
+                        <i class="bi bi-star-fill"></i> @obj.RatingAvg?.ToString("F1")
+                        <small>(@obj.RatingCount)</small>
+                    </span>
+                }
+            </div>
+        </header>
+
+        <!-- Layout: main + sidebar -->
+        <div class="detail-layout">
+            <main class="detail-main">
+                <!-- ────── Gallery ────── -->
+                <div class="detail-block detail-gallery">
+                    @if (Model.Gallery.Any())
+                    {
+                        <div class="gallery-main swiper">
+                            <div class="swiper-wrapper">
+                                @foreach (var img in Model.Gallery)
+                                {
+                                    var caption = lang == "en" ? img.CaptionEn : lang == "be" ? img.CaptionBe : img.CaptionRu;
+                                    var fullImageUrl = ResolveFullImageUrl(img.Url, img.ThumbUrl);
+                                    var thumbImageUrl = ResolveThumbImageUrl(img.Url, img.ThumbUrl);
+                                    <div class="swiper-slide">
+                                        <a href="@fullImageUrl" class="gallery-item"
+                                           data-sub-html='<h4>@name</h4>@(string.IsNullOrEmpty(caption) ? "" : $"<p>{caption}</p>")'>
+                                            <img src="@fullImageUrl" alt="@(caption ?? name)" loading="lazy">
+                                            @if (img.Is360)
+                                            {
+                                                <span class="gallery-badge gallery-360"><i class="bi bi-badge-vr"></i> 360°</span>
+                                            }
+                                        </a>
+                                    </div>
+                                }
+                            </div>
+                            <button type="button" class="gallery-nav gallery-prev" aria-label="prev"><i class="bi bi-chevron-left"></i></button>
+                            <button type="button" class="gallery-nav gallery-next" aria-label="next"><i class="bi bi-chevron-right"></i></button>
+                            <div class="gallery-pagination swiper-pagination"></div>
+                        </div>
+
+                        @if (Model.Gallery.Count > 1)
+                        {
+                            <div class="gallery-thumbs swiper">
+                                <div class="swiper-wrapper">
+                                    @foreach (var img in Model.Gallery)
+                                    {
+                                        var thumbImageUrl = ResolveThumbImageUrl(img.Url, img.ThumbUrl);
+                                        <div class="swiper-slide">
+                                            <img src="@thumbImageUrl" alt="" loading="lazy">
+                                        </div>
+                                    }
+                                </div>
+                            </div>
+                        }
+                    }
+                    else if (!string.IsNullOrEmpty(obj.MainImageUrl))
+                    {
+                        var mainImageUrl = ResolveFullImageUrl(obj.MainImageUrl, null);
+                        <div class="gallery-fallback">
+                            <img src="@mainImageUrl" alt="@name">
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="gallery-empty">
+                            <i class="bi bi-image"></i>
+                            <span>@Localize("gallery.empty")</span>
+                        </div>
+                    }
+                </div>
+
+                <!-- ────── Description ────── -->
+                @{
+                    var fullDesc = lang == "en" ? obj.DescriptionEn : lang == "be" ? obj.DescriptionBe : obj.DescriptionRu;
+                    var shortDesc = lang == "en" ? obj.ShortDescEn : lang == "be" ? obj.ShortDescBe : obj.ShortDescRu;
+                    var description = !string.IsNullOrWhiteSpace(fullDesc) ? fullDesc : shortDesc;
+                }
+                @if (!string.IsNullOrWhiteSpace(description))
+                {
+                    <section class="detail-block detail-description">
+                        <h2 class="detail-block-title">
+                            <i class="bi bi-book"></i> @Localize("section.description")
+                        </h2>
+                        <div class="rich-text">@Html.Raw(description)</div>
+                    </section>
+                }
+
+                <!-- ────── Quick facts table ────── -->
+                @{
+                    var hasFacts = obj.BuildYear.HasValue
+                        || !string.IsNullOrWhiteSpace(obj.Architect)
+                        || (obj.IsVisitable && (!string.IsNullOrWhiteSpace(obj.VisitingHours) || !string.IsNullOrWhiteSpace(obj.EntryFee)))
+                        || obj.HeritageCategory.HasValue;
+                }
+                @if (hasFacts)
+                {
+                    <section class="detail-block detail-facts">
+                        <h2 class="detail-block-title">
+                            <i class="bi bi-info-circle"></i> @Localize("section.info")
+                        </h2>
+                        <dl class="info-list">
+                            @if (obj.BuildYear.HasValue)
+                            {
+                                <dt>@Localize("info.year")</dt>
+                                <dd>@obj.BuildYear</dd>
+                            }
+                            @if (!string.IsNullOrWhiteSpace(obj.Architect))
+                            {
+                                <dt>@Localize("info.architect")</dt>
+                                <dd>@obj.Architect</dd>
+                            }
+                            @if (obj.IsVisitable && !string.IsNullOrWhiteSpace(obj.VisitingHours))
+                            {
+                                <dt>@Localize("info.hours")</dt>
+                                <dd>@obj.VisitingHours</dd>
+                            }
+                            @if (obj.IsVisitable && !string.IsNullOrWhiteSpace(obj.EntryFee))
+                            {
+                                <dt>@Localize("info.fee")</dt>
+                                <dd>@obj.EntryFee</dd>
+                            }
+                            @if (obj.HeritageCategory.HasValue)
+                            {
+                                <dt>@Localize("info.protection")</dt>
+                                <dd>
+                                    @Localize("info.protectionCat") @obj.HeritageCategory@(obj.HeritageYear.HasValue ? $" · {Localize("info.since")} {obj.HeritageYear}" : "")
+                                </dd>
+                            }
+                        </dl>
+                    </section>
+                }
+
+                <!-- ────── Tags ────── -->
+                @if (Model.Tags.Any())
+                {
+                    <section class="detail-block detail-tags-block">
+                        <h2 class="detail-block-title">
+                            <i class="bi bi-tags"></i> @Localize("section.tags")
+                        </h2>
+                        <div class="tag-chips">
+                            @foreach (var tag in Model.Tags)
+                            {
+                                var tagName = lang == "en" ? tag.NameEn : lang == "be" ? tag.NameBe : tag.NameRu;
+                                var bg = !string.IsNullOrEmpty(tag.ColorHex) ? tag.ColorHex : "#8B1A2A";
+                                <a href="@Url.Action("Index", "Catalog", new { tag = tag.Id })"
+                                   class="tag-chip" style="--tag-color:@bg">
+                                    <i class="bi bi-hash"></i>@tagName
+                                </a>
+                            }
+                        </div>
+                    </section>
+                }
+
+                <!-- ────── Fun fact ────── -->
+                @{
+                    var funFact = lang == "en" ? obj.FunFactEn : lang == "be" ? obj.FunFactBe : obj.FunFactRu;
+                }
+                @if (!string.IsNullOrWhiteSpace(funFact))
+                {
+                    <aside class="detail-funfact">
+                        <div class="funfact-icon">💡</div>
+                        <div class="funfact-body">
+                            <div class="funfact-title">@Localize("section.funfact")</div>
+                            <p class="funfact-text">@funFact</p>
+                        </div>
+                    </aside>
+                }
+
+                <!-- ────── Related objects ────── -->
+                @if (Model.RelatedObjects.Any())
+                {
+                    <section class="detail-block">
+                        <h2 class="detail-block-title">
+                            <i class="bi bi-link-45deg"></i> @Localize("section.related")
+                        </h2>
+                        <div class="related-grid">
+                            @foreach (var rel in Model.RelatedObjects)
+                            {
+                                @await Html.PartialAsync("_RelatedCard", rel)
+                            }
+                        </div>
+                    </section>
+                }
+
+                <!-- ────── Nearby objects ────── -->
+                @if (Model.NearbyObjects.Any())
+                {
+                    <section class="detail-block">
+                        <h2 class="detail-block-title">
+                            <i class="bi bi-pin-map"></i> @Localize("section.nearby")
+                        </h2>
+                        <div class="related-grid">
+                            @foreach (var nb in Model.NearbyObjects)
+                            {
+                                @await Html.PartialAsync("_RelatedCard", nb)
+                            }
+                        </div>
+                    </section>
+                }
+
+                <!-- ────── Comments ────── -->
+                <section class="detail-block detail-comments" id="comments">
+                    <h2 class="detail-block-title">
+                        <i class="bi bi-chat-left-text"></i> @Localize("comments.title")
+                        <span class="comment-count-badge">@Model.TotalComments</span>
+                    </h2>
+
+                    @if (User.Identity?.IsAuthenticated == true)
+                    {
+                        <form id="addCommentForm" class="comment-form" data-object-id="@obj.Id">
+                            <textarea id="commentBody" name="body" maxlength="2000" rows="3"
+                                      placeholder="@Localize("comments.placeholder")"
+                                      required minlength="3"></textarea>
+                            <div class="comment-form-actions">
+                                <small class="comment-form-note">
+                                    <i class="bi bi-info-circle"></i> @Localize("comments.submitNote")
+                                </small>
+                                <button type="submit" class="btn btn-primary" id="btnSubmitComment">
+                                    <i class="bi bi-send me-1"></i> @Localize("comments.send")
+                                </button>
+                            </div>
+                            <div id="commentFormResult" class="alert d-none mt-2 mb-0" role="alert"></div>
+                        </form>
+                    }
+                    else
+                    {
+                        <div class="comment-login-prompt">
+                            <i class="bi bi-info-circle"></i>
+                            <span>
+                                <a href="@Url.Action("Login", "Auth")">@Localize("comments.loginLink")</a>
+                                @Localize("comments.loginPrompt")
+                            </span>
+                        </div>
+                    }
+
+                    @if (Model.Comments.Any())
+                    {
+                        <div class="comments-list">
+                            @foreach (var c in Model.Comments)
+                            {
+                                var displayName = !string.IsNullOrWhiteSpace(c.User?.DisplayName)
+                                    ? c.User!.DisplayName!
+                                    : (c.User?.UserName ?? "User");
+                                var initial = !string.IsNullOrWhiteSpace(displayName)
+                                    ? displayName.Trim()[..1].ToUpperInvariant()
+                                    : "U";
+                                var dateStr = c.CreatedAt.ToLocalTime().ToString("d MMMM yyyy",
+                                    System.Globalization.CultureInfo.GetCultureInfo(
+                                        lang == "be" ? "be-BY" : lang == "en" ? "en-US" : "ru-RU"));
+                                <article class="comment-card">
+                                    <div class="comment-avatar">
+                                        @if (!string.IsNullOrEmpty(c.User?.AvatarUrl))
+                                        {
+                                            <img src="@c.User.AvatarUrl" alt="@displayName">
+                                        }
+                                        else
+                                        {
+                                            <span class="comment-avatar-initial">@initial</span>
+                                        }
+                                    </div>
+                                    <div class="comment-body">
+                                        <div class="comment-head">
+                                            <strong class="comment-author">@displayName</strong>
+                                            <time class="comment-date" datetime="@c.CreatedAt.ToString("o")">@dateStr</time>
+                                        </div>
+                                        <p class="comment-text">@c.Body</p>
+                                    </div>
+                                </article>
+                            }
+                        </div>
+
+                        @if (Model.TotalCommentsPages > 1)
+                        {
+                            <nav class="comments-pagination" aria-label="@Localize("comments.pagination")">
+                                <span class="pagination-info">
+                                    @Localize("comments.page") @Model.CurrentCommentsPage / @Model.TotalCommentsPages
+                                </span>
+                            </nav>
+                        }
+                    }
+                    else
+                    {
+                        <div class="comments-empty">
+                            <i class="bi bi-chat-square-dots"></i>
+                            <p>@Localize("comments.beFirst")</p>
+                        </div>
+                    }
+                </section>
+
+                <!-- #14.7 report-error modal will go in section after main content -->
+            </main>
+
+            <aside class="detail-sidebar">
+                @{
+                    var address = obj.Location == null ? "" :
+                        (lang == "en" ? obj.Location.AddressEn :
+                         lang == "be" ? obj.Location.AddressBe : obj.Location.AddressRu);
+                    var isAuth = User.Identity?.IsAuthenticated == true;
+                }
+
+                <!-- ── Mini map ── -->
+                @if (obj.Location != null)
+                {
+                    <div class="sidebar-block sidebar-map-block">
+                        <div id="detailMiniMap" class="sidebar-mini-map"
+                             data-lat="@obj.Location.Lat.ToString(System.Globalization.CultureInfo.InvariantCulture)"
+                             data-lng="@obj.Location.Lng.ToString(System.Globalization.CultureInfo.InvariantCulture)"
+                             data-color="@(obj.Category?.ColorHex ?? "#8B1A2A")"
+                             data-icon="@(obj.Category?.IconClass ?? "bi-geo-alt")"></div>
+                        <a href="@Url.Action("Index", "Map", new { focus = obj.Id })" class="sidebar-map-link">
+                            <i class="bi bi-fullscreen"></i> @Localize("sidebar.bigMap")
+                        </a>
+                    </div>
+
+                    <div class="sidebar-block sidebar-coords">
+                        <div class="sidebar-block-label">@Localize("sidebar.address")</div>
+                        @if (!string.IsNullOrEmpty(address))
+                        {
+                            <div class="sidebar-address"><i class="bi bi-pin-map"></i> @address</div>
+                        }
+                        <div class="sidebar-coord-pair">
+                            @obj.Location.Lat.ToString("F5", System.Globalization.CultureInfo.InvariantCulture),
+                            @obj.Location.Lng.ToString("F5", System.Globalization.CultureInfo.InvariantCulture)
+                        </div>
+                    </div>
+                }
+
+                <!-- ── Rating ── -->
+                <div class="sidebar-block sidebar-rating">
+                    <div class="sidebar-block-label">@Localize("sidebar.yourRating")</div>
+                    <div class="rating-stars-edit" id="ratingStars"
+                         data-current="@(Model.CurrentUserRating ?? 0)"
+                         data-auth="@(isAuth ? "1" : "0")"
+                         data-object-id="@obj.Id">
+                        @for (var i = 1; i <= 5; i++)
+                        {
+                            <button type="button" class="rating-star-btn @(Model.CurrentUserRating >= i ? "filled" : "")"
+                                    data-value="@i" aria-label="@i">
+                                <i class="bi bi-star-fill"></i>
+                            </button>
+                        }
+                    </div>
+                    @if (obj.RatingCount > 0)
+                    {
+                        <div class="sidebar-rating-summary">
+                            <strong>@obj.RatingAvg?.ToString("F1")</strong>
+                            <span class="sidebar-rating-count">@obj.RatingCount @Localize("sidebar.votes")</span>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="sidebar-rating-summary text-muted">@Localize("sidebar.beFirst")</div>
+                    }
+                </div>
+
+                <!-- ── Actions ── -->
+                <div class="sidebar-block sidebar-actions">
+                    <button type="button" class="sidebar-action-btn @(Model.IsFavorite ? "active" : "")"
+                            id="btnDetailFavorite" data-object-id="@obj.Id" data-auth="@(isAuth ? "1" : "0")">
+                        <i class="bi @(Model.IsFavorite ? "bi-heart-fill" : "bi-heart")"></i>
+                        <span class="action-label">@Localize(Model.IsFavorite ? "action.unfavorite" : "action.favorite")</span>
+                    </button>
+
+                    <button type="button" class="sidebar-action-btn" id="btnQuickAddToRoute" data-object-id="@obj.Id" data-auth="@(isAuth ? "1" : "0")">
+                        <i class="bi bi-signpost-split"></i>
+                        <span class="action-label">@Localize("action.addRoute")</span>
+                    </button>
+
+                    <button type="button" class="sidebar-action-btn"
+                            id="btnReportError" data-bs-toggle="modal" data-bs-target="#reportErrorModal">
+                        <i class="bi bi-exclamation-triangle"></i>
+                        <span class="action-label">@Localize("action.reportError")</span>
+                    </button>
+                </div>
+            </aside>
+        </div>
+    </div>
+</section>
+
+<!-- Report error modal -->
+<div class="modal fade" id="reportErrorModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="bi bi-exclamation-triangle text-warning me-2"></i>@Localize("report.title")
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="reportErrorForm" data-object-id="@obj.Id">
+                <div class="modal-body">
+                    <p class="text-muted mb-3">@Localize("report.intro")</p>
+                    <div class="mb-3">
+                        <label for="reportSubject" class="form-label">@Localize("report.subject")</label>
+                        <input type="text" class="form-control" id="reportSubject" name="subject"
+                               maxlength="200" required placeholder="@Localize("report.subjectPh")">
+                    </div>
+                    <div class="mb-3">
+                        <label for="reportDescription" class="form-label">@Localize("report.description")</label>
+                        <textarea class="form-control" id="reportDescription" name="description"
+                                  rows="4" maxlength="2000" required minlength="10"
+                                  placeholder="@Localize("report.descriptionPh")"></textarea>
+                    </div>
+                    <div id="reportErrorAlert" class="alert d-none mb-0" role="alert"></div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
+                        @Localize("report.cancel")
+                    </button>
+                    <button type="submit" class="btn btn-primary" id="btnReportSubmit">
+                        <span id="reportSpinner" class="spinner-border spinner-border-sm d-none me-2"></span>
+                        <i class="bi bi-send me-1"></i> @Localize("report.submit")
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Route picker modal -->
+<div class="modal fade" id="routePickerModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-signpost-split me-2"></i>@Localize("routePicker.title")</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label for="routePickerSelect" class="form-label">@Localize("routePicker.select")</label>
+                    <select id="routePickerSelect" class="form-select">
+                        <option value="">@Localize("routePicker.newRoute")</option>
+                    </select>
+                    <div class="form-text">@Localize("routePicker.hint")</div>
+                </div>
+                <div class="mb-3" id="routePickerTitleWrap">
+                    <label for="routePickerTitle" class="form-label">@Localize("routePicker.newRouteTitle")</label>
+                    <input type="text" id="routePickerTitle" class="form-control" value="@Localize("routePicker.defaultTitle")">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">@Localize("routePicker.cancel")</button>
+                <button type="button" class="btn btn-primary" id="routePickerConfirmBtn">@Localize("routePicker.add")</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+    (function () {
+        'use strict';
+
+        // ── Toast helper (uses #siteToast from _Layout) ──────────────────
+        const toastEl = document.getElementById('siteToast');
+        const toastBody = document.getElementById('siteToastBody');
+        let toastInstance = null;
+        function toast(message, kind) {
+            if (!toastEl || !toastBody) return;
+            toastEl.classList.remove('bg-success', 'bg-danger', 'bg-warning', 'bg-info');
+            toastEl.classList.add(
+                kind === 'success' ? 'bg-success' :
+                kind === 'error'   ? 'bg-danger'  :
+                kind === 'warning' ? 'bg-warning' : 'bg-info'
+            );
+            toastBody.textContent = message;
+            if (!toastInstance) toastInstance = new bootstrap.Toast(toastEl, { delay: 3000 });
+            toastInstance.show();
+        }
+
+        async function quickAddToRoute(objectId) {
+            const isAuthenticated = document.body.dataset.authenticated === 'true';
+            if (!isAuthenticated) {
+                window.showToast?.('@Localize("js.error")', 'warning');
+                return;
+            }
+            const modalEl = document.getElementById('routePickerModal');
+            const selectEl = document.getElementById('routePickerSelect');
+            const titleWrap = document.getElementById('routePickerTitleWrap');
+            const titleInput = document.getElementById('routePickerTitle');
+            const confirmBtn = document.getElementById('routePickerConfirmBtn');
+            if (!modalEl || !selectEl || !titleWrap || !titleInput || !confirmBtn) return;
+
+            const res = await fetch('/RouteBuilder/GetMyRoutesLite', { credentials: 'same-origin' });
+            const routes = res.ok ? await res.json() : [];
+
+            const lastRouteId = (() => {
+                try { return parseInt(localStorage.getItem('bh_last_route_id') || '', 10) || null; } catch { return null; }
+            })();
+            const options = ['<option value="">@Localize("routePicker.newRoute")</option>']
+                .concat((routes || []).map(r => `<option value="${r.id}">${String(r.title || '').replace(/</g, '&lt;')} (#${r.id})</option>`))
+                .join('');
+            selectEl.innerHTML = options;
+            if (lastRouteId && routes.some(r => r.id === lastRouteId)) {
+                selectEl.value = String(lastRouteId);
+                titleWrap.classList.add('d-none');
+            } else {
+                selectEl.value = '';
+                titleWrap.classList.remove('d-none');
+            }
+            selectEl.onchange = () => {
+                titleWrap.classList.toggle('d-none', !!selectEl.value);
+            };
+
+            const bsModal = bootstrap.Modal.getOrCreateInstance(modalEl);
+            bsModal.show();
+
+            confirmBtn.onclick = async () => {
+                confirmBtn.disabled = true;
+                try {
+                    let routeId = parseInt(selectEl.value || '', 10) || null;
+                    if (!routeId) {
+                        const title = titleInput.value.trim() || '@Localize("routePicker.defaultTitle")';
+                        const body = new URLSearchParams();
+                        body.set('title', title);
+                        const createRes = await fetch('/RouteBuilder/CreateRoute', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8' },
+                            body
+                        });
+                        const created = await createRes.json();
+                        if (!created?.success || !created?.routeId) throw new Error('route_create_failed');
+                        routeId = created.routeId;
+                    }
+
+                    const body2 = new URLSearchParams();
+                    body2.set('routeId', String(routeId));
+                    body2.set('objectId', String(objectId));
+                    const addRes = await fetch('/RouteBuilder/AddStop', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8' },
+                        body: body2
+                    });
+                    const added = await addRes.json();
+                    if (!added?.success) throw new Error('stop_add_failed');
+
+                    try { localStorage.setItem('bh_last_route_id', String(routeId)); } catch {}
+                    bsModal.hide();
+                    window.showToastAction?.('@Localize("routePicker.added")', '@Localize("routePicker.go")', `/RouteBuilder?routeId=${encodeURIComponent(routeId)}`, 'success');
+                } finally {
+                    confirmBtn.disabled = false;
+                }
+            };
+        }
+
+        document.getElementById('btnQuickAddToRoute')?.addEventListener('click', async (e) => {
+            e.preventDefault();
+            const btn = e.currentTarget;
+            const objectId = parseInt(btn.dataset.objectId || '', 10);
+            if (!objectId) return;
+            btn.disabled = true;
+            try {
+                await quickAddToRoute(objectId);
+            } catch (err) {
+                console.error(err);
+                window.showToast?.('@Localize("routePicker.addFailed")', 'danger');
+            } finally {
+                btn.disabled = false;
+            }
+        });
+
+        // ── Mini map ─────────────────────────────────────────────────────
+        const miniMapEl = document.getElementById('detailMiniMap');
+        if (miniMapEl && typeof L !== 'undefined') {
+            const lat = parseFloat(miniMapEl.dataset.lat);
+            const lng = parseFloat(miniMapEl.dataset.lng);
+            const color = miniMapEl.dataset.color || '#8B1A2A';
+            const iconCls = miniMapEl.dataset.icon || 'bi-geo-alt';
+
+            const map = L.map(miniMapEl, {
+                center: [lat, lng],
+                zoom: 14,
+                scrollWheelZoom: false,
+                zoomControl: true,
+                attributionControl: false
+            });
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '',
+                maxZoom: 19
+            }).addTo(map);
+
+            const icon = L.divIcon({
+                className: '',
+                html: `<div class="map-pin" style="background:${color}"><i class="bi ${iconCls}"></i></div>`,
+                iconSize: [34, 34],
+                iconAnchor: [17, 34]
+            });
+            L.marker([lat, lng], { icon }).addTo(map);
+
+            // Re-flow when mini map becomes visible (Leaflet calc'd before layout).
+            setTimeout(() => map.invalidateSize(), 100);
+        }
+
+        // ── Rating stars ────────────────────────────────────────────────
+        const starsEl = document.getElementById('ratingStars');
+        if (starsEl) {
+            const isAuth = starsEl.dataset.auth === '1';
+            const objectId = starsEl.dataset.objectId;
+            let current = parseInt(starsEl.dataset.current || '0', 10);
+            const stars = starsEl.querySelectorAll('.rating-star-btn');
+
+            function paint(value) {
+                stars.forEach((s, i) => s.classList.toggle('filled', i < value));
+            }
+
+            stars.forEach((s) => {
+                s.addEventListener('mouseenter', () => paint(parseInt(s.dataset.value, 10)));
+                s.addEventListener('mouseleave', () => paint(current));
+                s.addEventListener('click', async () => {
+                    if (!isAuth) {
+                        toast('@Localize("toast.needAuth")', 'warning');
+                        return;
+                    }
+                    const value = parseInt(s.dataset.value, 10);
+                    stars.forEach(x => x.disabled = true);
+                    try {
+                        const res = await fetch('/Object/SetRating', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                            body: new URLSearchParams({ objectId, value: String(value) })
+                        });
+                        if (!res.ok) throw new Error('HTTP ' + res.status);
+                        const data = await res.json();
+                        if (data && data.success) {
+                            current = value;
+                            paint(current);
+                            toast('@Localize("toast.ratingSaved")', 'success');
+                        } else {
+                            toast('@Localize("toast.error")', 'error');
+                        }
+                    } catch (e) {
+                        toast('@Localize("toast.error")', 'error');
+                    } finally {
+                        stars.forEach(x => x.disabled = false);
+                    }
+                });
+            });
+        }
+
+        // ── Favorite button ─────────────────────────────────────────────
+        const favBtn = document.getElementById('btnDetailFavorite');
+        if (favBtn) {
+            const objectId = favBtn.dataset.objectId;
+            const isAuth = favBtn.dataset.auth === '1';
+            const labelEl = favBtn.querySelector('.action-label');
+            const iconEl = favBtn.querySelector('i');
+
+            favBtn.addEventListener('click', async () => {
+                if (!isAuth) {
+                    toast('@Localize("toast.needAuth")', 'warning');
+                    return;
+                }
+                favBtn.disabled = true;
+                try {
+                    const res = await fetch('/Object/ToggleFavorite', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                        body: new URLSearchParams({ objectId })
+                    });
+                    if (!res.ok) throw new Error('HTTP ' + res.status);
+                    const data = await res.json();
+                    if (data && data.success) {
+                        const isFav = data.isFavorite;
+                        favBtn.classList.toggle('active', isFav);
+                        iconEl.className = isFav ? 'bi bi-heart-fill' : 'bi bi-heart';
+                        labelEl.textContent = isFav
+                            ? '@Localize("action.unfavorite")'
+                            : '@Localize("action.favorite")';
+                        toast(isFav ? '@Localize("toast.favAdded")' : '@Localize("toast.favRemoved")', 'success');
+                    }
+                } catch (e) {
+                    toast('@Localize("toast.error")', 'error');
+                } finally {
+                    favBtn.disabled = false;
+                }
+            });
+        }
+
+        // ── Report error modal ─────────────────────────────────────────
+        const reportForm = document.getElementById('reportErrorForm');
+        if (reportForm) {
+            const objectId = reportForm.dataset.objectId;
+            const subjectInput = document.getElementById('reportSubject');
+            const descInput = document.getElementById('reportDescription');
+            const alertBox = document.getElementById('reportErrorAlert');
+            const submitBtn = document.getElementById('btnReportSubmit');
+            const spinner = document.getElementById('reportSpinner');
+            const modalEl = document.getElementById('reportErrorModal');
+            let bsReportModal = null;
+
+            function showReportAlert(message, kind) {
+                alertBox.classList.remove('d-none', 'alert-success', 'alert-danger', 'alert-warning');
+                alertBox.classList.add(kind === 'success' ? 'alert-success' : 'alert-danger');
+                alertBox.textContent = message;
+            }
+
+            // Reset form on each open
+            modalEl.addEventListener('show.bs.modal', () => {
+                subjectInput.value = '';
+                descInput.value = '';
+                alertBox.classList.add('d-none');
+            });
+
+            reportForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const subject = subjectInput.value.trim();
+                const description = descInput.value.trim();
+                if (subject.length < 3 || description.length < 10) {
+                    showReportAlert('@Localize("report.errorMin")', 'error');
+                    return;
+                }
+                submitBtn.disabled = true;
+                spinner.classList.remove('d-none');
+                try {
+                    const res = await fetch('/Object/ReportError', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                        body: new URLSearchParams({ objectId, subject, description })
+                    });
+                    if (!res.ok) throw new Error('HTTP ' + res.status);
+                    const data = await res.json();
+                    if (data && data.success) {
+                        if (!bsReportModal) bsReportModal = bootstrap.Modal.getOrCreateInstance(modalEl);
+                        bsReportModal.hide();
+                        toast('@Localize("report.success")', 'success');
+                    } else {
+                        showReportAlert('@Localize("toast.error")', 'error');
+                    }
+                } catch (err) {
+                    showReportAlert('@Localize("toast.error")', 'error');
+                } finally {
+                    submitBtn.disabled = false;
+                    spinner.classList.add('d-none');
+                }
+            });
+        }
+
+        // ── Add comment ─────────────────────────────────────────────────
+        const commentForm = document.getElementById('addCommentForm');
+        if (commentForm) {
+            const objectId = commentForm.dataset.objectId;
+            const bodyInput = document.getElementById('commentBody');
+            const btn = document.getElementById('btnSubmitComment');
+            const resultBox = document.getElementById('commentFormResult');
+
+            function showResult(message, kind) {
+                resultBox.classList.remove('d-none', 'alert-success', 'alert-danger', 'alert-warning');
+                resultBox.classList.add(kind === 'success' ? 'alert-success' : 'alert-danger');
+                resultBox.textContent = message;
+            }
+
+            commentForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const body = bodyInput.value.trim();
+                if (body.length < 3) {
+                    showResult('@Localize("comments.tooShort")', 'error');
+                    return;
+                }
+                btn.disabled = true;
+                resultBox.classList.add('d-none');
+
+                try {
+                    const res = await fetch('/Object/AddComment', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                        body: new URLSearchParams({ objectId, body })
+                    });
+                    if (!res.ok) throw new Error('HTTP ' + res.status);
+                    const data = await res.json();
+                    if (data && data.success) {
+                        showResult('@Localize("comments.modSuccess")', 'success');
+                        bodyInput.value = '';
+                    } else {
+                        showResult(data && data.message ? data.message : '@Localize("toast.error")', 'error');
+                    }
+                } catch (err) {
+                    showResult('@Localize("toast.error")', 'error');
+                } finally {
+                    btn.disabled = false;
+                }
+            });
+        }
+
+        // ── Gallery: main + thumbs Swiper, opens Lightgallery on click ───
+        const mainEl = document.querySelector('.gallery-main');
+        if (mainEl) {
+            const thumbsEl = document.querySelector('.gallery-thumbs');
+            let thumbsSwiper = null;
+            if (thumbsEl) {
+                thumbsSwiper = new Swiper(thumbsEl, {
+                    slidesPerView: 4,
+                    spaceBetween: 8,
+                    watchSlidesProgress: true,
+                    freeMode: true,
+                    breakpoints: {
+                        576: { slidesPerView: 5 },
+                        768: { slidesPerView: 6 },
+                        992: { slidesPerView: 7 }
+                    }
+                });
+            }
+            // eslint-disable-next-line no-new
+            new Swiper(mainEl, {
+                loop: false,
+                navigation: { nextEl: '.gallery-next', prevEl: '.gallery-prev' },
+                pagination: { el: '.gallery-pagination', clickable: true },
+                thumbs: thumbsSwiper ? { swiper: thumbsSwiper } : undefined
+            });
+
+            if (typeof lightGallery !== 'undefined') {
+                lightGallery(mainEl.querySelector('.swiper-wrapper'), {
+                    selector: '.gallery-item',
+                    plugins: window.lgZoom && window.lgThumbnail ? [window.lgZoom, window.lgThumbnail] : [],
+                    speed: 350,
+                    download: false
+                });
+            }
+        }
+    })();
+</script>
+}
+
+@functions {
+    private string GetCenturyText(short? start, short? end, string lang)
+    {
+        if (!start.HasValue) return "";
+        var era = start < 0 ? Localize("meta.era.bc") : Localize("meta.era.century");
+        var startText = ToRoman(Math.Abs((int)start));
+        if (end.HasValue && end != start)
+        {
+            var endText = ToRoman(Math.Abs((int)end));
+            return $"{startText}–{endText} {era}";
+        }
+        return $"{startText} {era}";
+    }
+
+    private string ToRoman(int c) => c switch
+    {
+        1 => "I",   2 => "II",   3 => "III",  4 => "IV",   5 => "V",
+        6 => "VI",  7 => "VII",  8 => "VIII", 9 => "IX",   10 => "X",
+        11 => "XI", 12 => "XII", 13 => "XIII",14 => "XIV", 15 => "XV",
+        16 => "XVI",17 => "XVII",18 => "XVIII",19 => "XIX",20 => "XX",
+        21 => "XXI", _ => c.ToString()
+    };
+
+    private string NormalizeImageUrl(string? url)
+    {
+        if (string.IsNullOrWhiteSpace(url))
+            return "";
+        url = url.Replace('\\', '/');
+        if (url.StartsWith("thumb_uploads/", StringComparison.OrdinalIgnoreCase))
+        {
+            var rest = url.Substring("thumb_uploads/".Length);
+            var idx = rest.LastIndexOf('/');
+            if (idx >= 0)
+            {
+                var dir = rest.Substring(0, idx);
+                var file = rest.Substring(idx + 1);
+                url = $"uploads/{dir}/thumb_{file}";
+            }
+        }
+        else if (url.StartsWith("/thumb_uploads/", StringComparison.OrdinalIgnoreCase))
+        {
+            var rest = url.Substring("/thumb_uploads/".Length);
+            var idx = rest.LastIndexOf('/');
+            if (idx >= 0)
+            {
+                var dir = rest.Substring(0, idx);
+                var file = rest.Substring(idx + 1);
+                url = $"uploads/{dir}/thumb_{file}";
+            }
+        }
+        if (url.StartsWith("http://", StringComparison.OrdinalIgnoreCase) ||
+            url.StartsWith("https://", StringComparison.OrdinalIgnoreCase) ||
+            url.StartsWith("/", StringComparison.Ordinal))
+            return url;
+        return "/" + url;
+    }
+
+    private bool IsThumbPath(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value)) return false;
+        var s = value.Replace('\\', '/');
+        return s.Contains("/thumb_", StringComparison.OrdinalIgnoreCase)
+               || s.StartsWith("thumb_uploads/", StringComparison.OrdinalIgnoreCase)
+               || s.StartsWith("/thumb_uploads/", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private string BuildFullFromThumb(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value)) return "";
+        var s = value.Replace('\\', '/');
+
+        if (s.StartsWith("thumb_uploads/", StringComparison.OrdinalIgnoreCase))
+            s = "uploads/" + s.Substring("thumb_uploads/".Length);
+        else if (s.StartsWith("/thumb_uploads/", StringComparison.OrdinalIgnoreCase))
+            s = "/uploads/" + s.Substring("/thumb_uploads/".Length);
+
+        var slash = s.LastIndexOf('/');
+        if (slash >= 0)
+        {
+            var dir = s.Substring(0, slash + 1);
+            var file = s.Substring(slash + 1);
+            if (file.StartsWith("thumb_", StringComparison.OrdinalIgnoreCase))
+                s = dir + file.Substring("thumb_".Length);
+        }
+
+        return NormalizeImageUrl(s);
+    }
+
+    private string ResolveFullImageUrl(string? url, string? thumbUrl)
+    {
+        // Prefer non-thumbnail source for the main image.
+        if (!string.IsNullOrWhiteSpace(url) && !IsThumbPath(url))
+            return NormalizeImageUrl(url);
+        if (!string.IsNullOrWhiteSpace(thumbUrl) && !IsThumbPath(thumbUrl))
+            return NormalizeImageUrl(thumbUrl);
+        if (!string.IsNullOrWhiteSpace(url))
+            return BuildFullFromThumb(url);
+        if (!string.IsNullOrWhiteSpace(thumbUrl))
+            return BuildFullFromThumb(thumbUrl);
+        return "";
+    }
+
+    private string ResolveThumbImageUrl(string? url, string? thumbUrl)
+    {
+        // Prefer explicit thumbnail source for bottom strip.
+        if (!string.IsNullOrWhiteSpace(thumbUrl))
+            return NormalizeImageUrl(thumbUrl);
+        if (!string.IsNullOrWhiteSpace(url) && IsThumbPath(url))
+            return NormalizeImageUrl(url);
+        return NormalizeImageUrl(url);
+    }
+
+    private string Localize(string key)
+    {
+        return BelarusHeritage.Localization.UiText.T(Context, $"object.detail.{key}");
+    }
+}

@@ -1,0 +1,71 @@
+@model Dictionary<string, string?>
+@{
+    Layout = "_AdminLayout";
+    ViewData["Title"] = BelarusHeritage.Localization.UiText.T(Context, "admin.nav.social");
+    string L(string key) => BelarusHeritage.Localization.UiText.T(Context, $"admin.social.{key}");
+}
+
+<div class="admin-page-header">
+    <h1 class="admin-page-title">@BelarusHeritage.Localization.UiText.T(Context, "admin.nav.social")</h1>
+    <div class="admin-page-breadcrumb">
+        <a href="/AdminDashboard">@BelarusHeritage.Localization.UiText.T(Context, "admin.nav.dashboard")</a>
+        <span class="sep">/</span>
+        <span>@BelarusHeritage.Localization.UiText.T(Context, "admin.section.administration")</span>
+        <span class="sep">/</span>
+        <span>@BelarusHeritage.Localization.UiText.T(Context, "admin.nav.social")</span>
+    </div>
+</div>
+
+@if (TempData["Success"] != null)
+{
+    <div class="alert alert-success alert-dismissible mb-3" role="alert">
+        <i class="bi bi-check-circle me-2"></i>@TempData["Success"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+}
+
+<div class="admin-card" style="max-width:560px;">
+    <div class="admin-card-body">
+        <p class="text-muted mb-4" style="font-size:.875rem;">
+            @BelarusHeritage.Localization.UiText.T(Context, "admin.social.help")
+        </p>
+
+        <form method="post">
+            <div class="mb-3">
+                <label class="form-label">
+                    <i class="bi bi-telegram me-1 text-primary"></i>Telegram
+                </label>
+                <input type="url" name="telegram" class="form-control"
+                       placeholder="https://t.me/..." value="@Model.GetValueOrDefault("social.telegram")">
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label">
+                    <i class="bi bi-instagram me-1" style="color:#e1306c;"></i>Instagram
+                </label>
+                <input type="url" name="instagram" class="form-control"
+                       placeholder="https://instagram.com/..." value="@Model.GetValueOrDefault("social.instagram")">
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label">
+                    <i class="bi bi-people-fill me-1" style="color:#0077ff;"></i>@L("vk")
+                </label>
+                <input type="url" name="vk" class="form-control"
+                       placeholder="https://vk.com/..." value="@Model.GetValueOrDefault("social.vk")">
+            </div>
+
+            <div class="mb-4">
+                <label class="form-label">
+                    <i class="bi bi-youtube me-1 text-danger"></i>YouTube
+                </label>
+                <input type="url" name="youtube" class="form-control"
+                       placeholder="https://youtube.com/..." value="@Model.GetValueOrDefault("social.youtube")">
+            </div>
+
+            <button type="submit" class="btn btn-secondary">
+                <i class="bi bi-save me-2"></i>@L("save")
+            </button>
+        </form>
+    </div>
+</div>

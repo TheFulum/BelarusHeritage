@@ -1,0 +1,153 @@
+@model BelarusHeritage.Models.ViewModels.AdminTrashViewModel
+@{
+    Layout = "_AdminLayout";
+    ViewData["Title"] = BelarusHeritage.Localization.UiText.T(Context, "admin.nav.trash");
+    string L(string key) => BelarusHeritage.Localization.UiText.T(Context, $"admin.trash.index.{key}");
+}
+
+<div class="admin-page-header">
+    <h1 class="admin-page-title">@BelarusHeritage.Localization.UiText.T(Context, "admin.nav.trash")</h1>
+    <div class="admin-page-breadcrumb">
+        <a href="/AdminDashboard">@BelarusHeritage.Localization.UiText.T(Context, "admin.nav.dashboard")</a>
+        <span class="sep">/</span>
+        <span>@BelarusHeritage.Localization.UiText.T(Context, "admin.nav.trash")</span>
+    </div>
+</div>
+
+@if (!Model.Objects.Any())
+{
+    <div class="admin-card">
+        <div class="admin-card-body text-center py-5 text-muted">
+            <i class="bi bi-trash3" style="font-size:2.5rem; display:block; margin-bottom:12px;"></i>
+            <p class="mb-0">@BelarusHeritage.Localization.UiText.T(Context, "admin.trash.index.empty")</p>
+        </div>
+    </div>
+}
+else
+{
+    <div class="d-flex align-items-center justify-content-between mb-2">
+        <div class="text-muted" style="font-size:.82rem;">@BelarusHeritage.Localization.UiText.T(Context, "admin.trash.index.total"): <strong>@Model.TotalCount</strong></div>
+        <div class="d-flex gap-2" id="massPanel" style="display:none!important;">
+            <button class="btn btn-sm btn-outline-success" onclick="massRestore()">
+                <i class="bi bi-arrow-counterclockwise me-1"></i>@BelarusHeritage.Localization.UiText.T(Context, "admin.trash.index.massRestore")
+            </button>
+        </div>
+    </div>
+
+    <div class="admin-card">
+        <div class="table-responsive">
+            <table class="table admin-table mb-0">
+                <thead>
+                    <tr>
+                        <th style="width:36px;">
+                            <input type="checkbox" class="form-check-input" onchange="toggleAll(this)">
+                        </th>
+                        <th>@L("col.title")</th>
+                        <th>@L("col.region")</th>
+                        <th>@L("col.category")</th>
+                        <th>@L("deletedAt")</th>
+                        <th style="width:120px;"></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var obj in Model.Objects)
+                    {
+                        <tr>
+                            <td>
+                                <input type="checkbox" class="form-check-input row-check" value="@obj.Id" onchange="updateMassPanel()">
+                            </td>
+                            <td>
+                                <div style="font-weight:500; font-size:.875rem;">@obj.NameRu</div>
+                                <div style="font-size:.72rem; color:#9ca3af;">@obj.Slug</div>
+                            </td>
+                            <td style="font-size:.85rem;">@(obj.Region?.NameRu ?? "—")</td>
+                            <td style="font-size:.85rem;">@(obj.Category?.NameRu ?? "—")</td>
+                            <td style="font-size:.8rem; color:#6b7280;">@obj.UpdatedAt.ToString("dd.MM.yyyy HH:mm")</td>
+                            <td class="text-end">
+                                <button class="btn btn-sm btn-outline-success btn-icon me-1" title="@BelarusHeritage.Localization.UiText.T(Context, "admin.trash.restore")"
+                                        onclick="restore(@obj.Id)">
+                                    <i class="bi bi-arrow-counterclockwise"></i>
+                                </button>
+                                <button class="btn btn-sm btn-outline-danger btn-icon" title="@BelarusHeritage.Localization.UiText.T(Context, "admin.trash.destroy")"
+                                        onclick="destroyForever(@obj.Id, '@obj.NameRu.Replace("'", "\\'")')">
+                                    <i class="bi bi-trash3-fill"></i>
+                                </button>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+}
+
+<!-- Confirm destroy modal -->
+<div class="modal fade" id="destroyModal" tabindex="-1">
+    <div class="modal-dialog modal-sm">
+        <div class="modal-content border-danger">
+            <div class="modal-header border-0 pb-0">
+                <h6 class="modal-title text-danger fw-semibold">
+                    <i class="bi bi-exclamation-triangle me-1"></i>@BelarusHeritage.Localization.UiText.T(Context, "admin.trash.destroy")
+                </h6>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p style="font-size:.875rem;">@BelarusHeritage.Localization.UiText.T(Context, "admin.trash.destroyTextStart") «<strong><span id="destroyName"></span></strong>» @BelarusHeritage.Localization.UiText.T(Context, "admin.trash.destroyTextEnd")<br>
+                <span class="text-danger fw-bold">@BelarusHeritage.Localization.UiText.T(Context, "admin.trash.index.irreversible")</span></p>
+            </div>
+            <div class="modal-footer border-0 pt-0">
+                <button class="btn btn-sm btn-secondary" data-bs-dismiss="modal">@L("btn.cancel")</button>
+                <button class="btn btn-sm btn-danger" id="destroyConfirmBtn">@BelarusHeritage.Localization.UiText.T(Context, "admin.trash.destroy")</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+    const destroyModal = new bootstrap.Modal('#destroyModal');
+    let pendingDestroyId = null;
+
+    async function restore(id) {
+        await fetch('/AdminTrash/Restore', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(id)
+        });
+        location.reload();
+    }
+
+    function destroyForever(id, name) {
+        pendingDestroyId = id;
+        document.getElementById('destroyName').textContent = name;
+        destroyModal.show();
+    }
+
+    document.getElementById('destroyConfirmBtn').addEventListener('click', async () => {
+        await fetch('/AdminTrash/DeleteForever', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(pendingDestroyId)
+        });
+        destroyModal.hide();
+        location.reload();
+    });
+
+    function toggleAll(cb) {
+        document.querySelectorAll('.row-check').forEach(c => c.checked = cb.checked);
+        updateMassPanel();
+    }
+
+    function updateMassPanel() {
+        const n = document.querySelectorAll('.row-check:checked').length;
+        document.getElementById('massPanel').style.display = n > 0 ? '' : 'none';
+    }
+
+    async function massRestore() {
+        const ids = Array.from(document.querySelectorAll('.row-check:checked')).map(c => parseInt(c.value));
+        await fetch('/AdminTrash/MassRestore', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(ids)
+        });
+        location.reload();
+    }
+</script>
+}

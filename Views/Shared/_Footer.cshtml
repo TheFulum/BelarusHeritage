@@ -1,0 +1,118 @@
+@inject BelarusHeritage.Services.SiteSettingsService _siteSettings
+@using BelarusHeritage.Localization
+@{
+    var socialLinks = await _siteSettings.GetSocialLinksAsync();
+    var tgUrl  = socialLinks.GetValueOrDefault("social.telegram");
+    var igUrl  = socialLinks.GetValueOrDefault("social.instagram");
+    var vkUrl  = socialLinks.GetValueOrDefault("social.vk");
+    var ytUrl  = socialLinks.GetValueOrDefault("social.youtube");
+}
+<footer class="site-footer">
+    <!-- Ornament Divider -->
+    <div class="ornament-divider-footer">
+        <svg viewBox="0 0 1200 30" preserveAspectRatio="none">
+            <path d="M0,0 Q150,30 300,0 T600,0 T900,0 T1200,0 V15 H0 Z" fill="#1A1A1A" opacity="0.05"/>
+        </svg>
+    </div>
+
+    <div class="container">
+        <div class="row">
+            <!-- Logo & About -->
+            <div class="col-lg-4 mb-4">
+                <a href="@Url.Action("Index", "Home")" class="footer-brand">
+                    <svg class="brand-icon" viewBox="0 0 100 100" width="36" height="36">
+                        <defs>
+                            <linearGradient id="footerGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                                <stop offset="0%" style="stop-color:#C68B2A"/>
+                                <stop offset="100%" style="stop-color:#8B1A2A"/>
+                            </linearGradient>
+                        </defs>
+                        <path fill="url(#footerGrad)" d="M50 5 L85 30 L85 70 L50 95 L15 70 L15 30 Z"/>
+                        <path fill="white" d="M50 20 L70 35 L70 60 L50 75 L30 60 L30 35 Z"/>
+                    </svg>
+                    <span class="footer-brand-text">@UiText.T(Context, "site.name")</span>
+                </a>
+                <p class="footer-about">@UiText.T(Context, "footer.about")</p>
+            </div>
+
+            <!-- Navigation -->
+            <div class="col-lg-2 col-md-4 mb-4">
+                <h5 class="footer-heading">@UiText.T(Context, "footer.nav")</h5>
+                <ul class="footer-links">
+                    <li><a href="@Url.Action("Index", "Home")">@UiText.T(Context, "nav.home")</a></li>
+                    <li><a href="@Url.Action("Index", "Catalog")">@UiText.T(Context, "nav.catalog")</a></li>
+                    <li><a href="@Url.Action("Index", "Map")">@UiText.T(Context, "nav.map")</a></li>
+                    <li><a href="@Url.Action("Index", "Timeline")">@UiText.T(Context, "nav.timeline")</a></li>
+                </ul>
+            </div>
+
+            <!-- Features -->
+            <div class="col-lg-2 col-md-4 mb-4">
+                <h5 class="footer-heading">@UiText.T(Context, "footer.features")</h5>
+                <ul class="footer-links">
+                    <li><a href="@Url.Action("Index", "Quiz")">@UiText.T(Context, "nav.quizzes")</a></li>
+                    <li><a href="@Url.Action("Index", "Ornament")">@UiText.T(Context, "nav.ornament")</a></li>
+                    <li><a href="@Url.Action("Index", "RouteBuilder")">@UiText.T(Context, "footer.routeBuilder")</a></li>
+                </ul>
+            </div>
+
+            <!-- Social & Language -->
+            <div class="col-lg-4 col-md-4 mb-4">
+                <h5 class="footer-heading">@UiText.T(Context, "footer.connect")</h5>
+                <div class="social-links">
+                    @if (!string.IsNullOrEmpty(tgUrl))
+                    {
+                        <a href="@tgUrl" class="social-link" title="Telegram" target="_blank" rel="noopener">
+                            <i class="bi bi-telegram"></i>
+                        </a>
+                    }
+                    @if (!string.IsNullOrEmpty(igUrl))
+                    {
+                        <a href="@igUrl" class="social-link" title="Instagram" target="_blank" rel="noopener">
+                            <i class="bi bi-instagram"></i>
+                        </a>
+                    }
+                    @if (!string.IsNullOrEmpty(vkUrl))
+                    {
+                        <a href="@vkUrl" class="social-link" title="@UiText.T(Context, "admin.social.vk")" target="_blank" rel="noopener">
+                            <i class="bi bi-people-fill"></i>
+                        </a>
+                    }
+                    @if (!string.IsNullOrEmpty(ytUrl))
+                    {
+                        <a href="@ytUrl" class="social-link" title="YouTube" target="_blank" rel="noopener">
+                            <i class="bi bi-youtube"></i>
+                        </a>
+                    }
+                    @if (string.IsNullOrEmpty(tgUrl) && string.IsNullOrEmpty(igUrl) && string.IsNullOrEmpty(vkUrl) && string.IsNullOrEmpty(ytUrl))
+                    {
+                        <span class="footer-muted" style="font-size:.8rem;">@UiText.T(Context, "footer.linksNotConfigured")</span>
+                    }
+                </div>
+
+                <div class="mt-4">
+                    <h6 class="footer-heading">@UiText.T(Context, "footer.language")</h6>
+                    <div class="lang-switcher-footer">
+                        <a href="@Url.Action("SetLanguage", "Home", new { culture = "ru" })"
+                           class="lang-btn @(UiText.Is(Context, "ru") ? "active" : "")">@UiText.T(Context, "lang.ru")</a>
+                        <a href="@Url.Action("SetLanguage", "Home", new { culture = "be" })"
+                           class="lang-btn @(UiText.Is(Context, "be") ? "active" : "")">@UiText.T(Context, "lang.be")</a>
+                        <a href="@Url.Action("SetLanguage", "Home", new { culture = "en" })"
+                           class="lang-btn @(UiText.Is(Context, "en") ? "active" : "")">@UiText.T(Context, "lang.en")</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Bottom Bar -->
+        <div class="footer-bottom">
+            <p class="copyright">
+                &copy; @DateTime.Now.Year @UiText.T(Context, "footer.copyright")
+            </p>
+            <p class="powered-by">
+                @UiText.T(Context, "footer.madeWith")
+            </p>
+        </div>
+    </div>
+
+</footer>

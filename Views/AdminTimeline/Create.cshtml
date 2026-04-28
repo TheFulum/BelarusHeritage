@@ -1,0 +1,100 @@
+@model BelarusHeritage.Models.Domain.TimelineEvent
+@{
+    Layout = "_AdminLayout";
+    ViewData["Title"] = BelarusHeritage.Localization.UiText.T(Context, "admin.timeline.create.title");
+    var objects = ViewBag.Objects as List<BelarusHeritage.Models.Domain.HeritageObject> ?? new();
+    string L(string key) => BelarusHeritage.Localization.UiText.T(Context, $"admin.timeline.create.{key}");
+    string F(string key) => BelarusHeritage.Localization.UiText.T(Context, $"admin.timeline.form.{key}");
+}
+
+<div class="admin-page-header">
+    <h1 class="admin-page-title">@L("header")</h1>
+    <div class="admin-page-breadcrumb">
+        <a href="/AdminDashboard">@BelarusHeritage.Localization.UiText.T(Context, "admin.nav.dashboard")</a>
+        <span class="sep">/</span>
+        <a href="/AdminTimeline">@BelarusHeritage.Localization.UiText.T(Context, "admin.nav.timeline")</a>
+        <span class="sep">/</span>
+        <span>@L("breadcrumb.create")</span>
+    </div>
+</div>
+
+<form asp-action="Create" method="post" enctype="multipart/form-data">
+    <div class="admin-card">
+        <div class="admin-card-body">
+            <div class="row g-3">
+                <div class="col-md-2">
+                    <label class="form-label" style="font-size:.8rem; font-weight:600;">@F("yearReq")</label>
+                    <input asp-for="Year" type="number" class="form-control" min="-9999" max="2100" required placeholder="1410">
+                    <div class="form-text" style="font-size:.72rem;">@F("yearHint")</div>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label" style="font-size:.8rem; font-weight:600;">@F("titleRuReq")</label>
+                    <input asp-for="TitleRu" class="form-control" required>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label" style="font-size:.8rem; font-weight:600;">@F("titleBe")</label>
+                    <input asp-for="TitleBe" class="form-control">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label" style="font-size:.8rem; font-weight:600;">@F("titleEn")</label>
+                    <input asp-for="TitleEn" class="form-control">
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label" style="font-size:.8rem; font-weight:600;">@BelarusHeritage.Localization.UiText.T(Context, "admin.timeline.index.col.order")</label>
+                    <input asp-for="SortOrder" type="number" class="form-control" value="0">
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label" style="font-size:.8rem; font-weight:600;">@F("descRu")</label>
+                    <textarea asp-for="BodyRu" class="form-control" rows="3"></textarea>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label" style="font-size:.8rem; font-weight:600;">@F("descEn")</label>
+                    <textarea asp-for="BodyEn" class="form-control" rows="3"></textarea>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label" style="font-size:.8rem; font-weight:600;">@F("objectLink")</label>
+                    <select asp-for="ObjectId" class="form-select">
+                        <option value="">@F("objectLink.none")</option>
+                        @foreach (var obj in objects)
+                        {
+                            <option value="@obj.Id">@obj.NameRu</option>
+                        }
+                    </select>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label" style="font-size:.8rem; font-weight:600;">@F("image")</label>
+                    <input type="file" name="imageFile" class="form-control" accept="image/jpeg,image/png,image/webp"
+                           onchange="previewTlImg(this)">
+                    <div id="tlImgPreview" class="mt-2"></div>
+                </div>
+                <div class="col-12">
+                    <div class="form-check">
+                        <input asp-for="IsPublished" class="form-check-input" type="checkbox">
+                        <label class="form-check-label" style="font-size:.875rem;">@BelarusHeritage.Localization.UiText.T(Context, "admin.timeline.index.col.published")</label>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="d-flex gap-2 mt-3">
+        <button type="submit" class="btn btn-danger">
+            <i class="bi bi-check2 me-1"></i>@L("btn.create")
+        </button>
+        <a href="/AdminTimeline" class="btn btn-outline-secondary">@L("btn.cancel")</a>
+    </div>
+</form>
+<script>
+function previewTlImg(input) {
+    const preview = document.getElementById('tlImgPreview');
+    if (input.files && input.files[0]) {
+        const reader = new FileReader();
+        reader.onload = e => {
+            preview.innerHTML = `<img src="${e.target.result}" style="max-height:120px;border-radius:6px;" alt="@BelarusHeritage.Localization.UiText.T(Context, "admin.timeline.preview")">`;
+        };
+        reader.readAsDataURL(input.files[0]);
+    } else {
+        preview.innerHTML = '';
+    }
+}
+</script>

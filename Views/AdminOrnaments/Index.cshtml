@@ -1,0 +1,207 @@
+@model List<BelarusHeritage.Models.Domain.Ornament>
+@{
+    Layout = "_AdminLayout";
+    ViewData["Title"] = BelarusHeritage.Localization.UiText.T(Context, "admin.ornaments.index.title");
+    string L(string key) => BelarusHeritage.Localization.UiText.T(Context, $"admin.ornaments.index.{key}");
+    int currentPage = ViewBag.CurrentPage ?? 1;
+    int pageSize = ViewBag.PageSize ?? 24;
+    int totalCount = ViewBag.TotalCount ?? 0;
+    int totalPages = (int)Math.Ceiling(totalCount / (double)pageSize);
+    string visibility = ViewBag.Visibility as string ?? "all";
+}
+
+@section Styles {
+<style>
+    .orn-thumb {
+        width: 96px;
+        height: 72px;
+        object-fit: contain;
+        border: 1px solid #e5e9f0;
+        border-radius: 6px;
+        background: #fff;
+    }
+    .orn-status {
+        font-size: .72rem;
+        border-radius: 999px;
+        padding: 3px 8px;
+        display: inline-block;
+        font-weight: 600;
+    }
+    .orn-status-public { background: #d1fae5; color: #065f46; }
+    .orn-status-hidden { background: #fee2e2; color: #991b1b; }
+</style>
+}
+
+<div class="admin-page-header d-flex align-items-center gap-3">
+    <div class="flex-grow-1">
+        <h1 class="admin-page-title">@L("title")</h1>
+        <div class="admin-page-breadcrumb">
+            <a href="/AdminDashboard">@BelarusHeritage.Localization.UiText.T(Context, "admin.nav.dashboard")</a>
+            <span class="sep">/</span>
+            <span>@BelarusHeritage.Localization.UiText.T(Context, "admin.nav.ornaments")</span>
+        </div>
+    </div>
+</div>
+
+<form method="get" class="admin-card mb-3">
+    <div class="admin-card-body py-3">
+        <div class="row g-2 align-items-end">
+            <div class="col-md-4">
+                <label class="form-label mb-1" style="font-size:.78rem;">@L("search")</label>
+                <input type="text" name="q" class="form-control form-control-sm"
+                       placeholder="@BelarusHeritage.Localization.UiText.T(Context, "admin.ornaments.searchPh")" value="@ViewBag.Search">
+            </div>
+            <div class="col-md-2">
+                <label class="form-label mb-1" style="font-size:.78rem;">@L("visibility")</label>
+                <select name="visibility" class="form-select form-select-sm">
+                    <option value="all" selected="@(visibility=="all"?"selected":null)">@L("visibility.all")</option>
+                    <option value="public" selected="@(visibility=="public"?"selected":null)">@L("visibility.public")</option>
+                    <option value="hidden" selected="@(visibility=="hidden"?"selected":null)">@L("visibility.hidden")</option>
+                </select>
+            </div>
+            <div class="col-auto d-flex gap-2">
+                <button type="submit" class="btn btn-sm btn-secondary">@L("btn.apply")</button>
+                <a href="/AdminOrnaments" class="btn btn-sm btn-outline-secondary">@L("btn.reset")</a>
+            </div>
+        </div>
+    </div>
+</form>
+
+<div class="d-flex align-items-center justify-content-between mb-2">
+    <div class="text-muted" style="font-size:.82rem;">@L("found"): <strong>@totalCount</strong></div>
+</div>
+
+<div class="admin-card">
+    <div class="table-responsive">
+        <table class="table admin-table mb-0">
+            <thead>
+                <tr>
+                    <th style="width:120px;">@BelarusHeritage.Localization.UiText.T(Context, "admin.timeline.preview")</th>
+                    <th>@BelarusHeritage.Localization.UiText.T(Context, "admin.ornaments.index.col.name")</th>
+                    <th>@BelarusHeritage.Localization.UiText.T(Context, "admin.ornaments.index.col.author")</th>
+                    <th>@BelarusHeritage.Localization.UiText.T(Context, "admin.ornaments.index.col.status")</th>
+                    <th>@BelarusHeritage.Localization.UiText.T(Context, "admin.dashboard.index.col.date")</th>
+                    <th style="width:160px;"></th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var o in Model)
+                {
+                    <tr id="ornRow_@o.Id">
+                        <td>
+                            <img src="@o.ImageUrl" alt="ornament @o.Id" class="orn-thumb" loading="lazy">
+                        </td>
+                        <td>
+                            <div style="font-weight:500; font-size:.875rem;">@(string.IsNullOrWhiteSpace(o.Title) ? $"{BelarusHeritage.Localization.UiText.T(Context, "admin.ornaments.item")} #{o.Id}" : o.Title)</div>
+                            <div style="font-size:.72rem; color:#9ca3af;">ID: @o.Id</div>
+                        </td>
+                        <td style="font-size:.85rem;">@(o.User?.UserName ?? "—")</td>
+                        <td>
+                            <span class="orn-status @(o.IsPublic ? "orn-status-public" : "orn-status-hidden")" id="ornStatus_@o.Id">
+                                @(o.IsPublic ? BelarusHeritage.Localization.UiText.T(Context, "admin.ornaments.public") : BelarusHeritage.Localization.UiText.T(Context, "admin.ornaments.hidden"))
+                            </span>
+                        </td>
+                        <td style="font-size:.8rem; color:#6b7280;">@o.CreatedAt.ToString("dd.MM.yy HH:mm")</td>
+                        <td class="text-end">
+                            <button class="btn btn-sm btn-outline-secondary me-1"
+                                    onclick="toggleOrnamentVisibility(@o.Id, this)">
+                                @(o.IsPublic ? BelarusHeritage.Localization.UiText.T(Context, "admin.ornaments.hide") : BelarusHeritage.Localization.UiText.T(Context, "admin.ornaments.publish"))
+                            </button>
+                            <button class="btn btn-sm btn-outline-danger"
+                                    onclick="deleteOrnament(@o.Id)">
+                                @BelarusHeritage.Localization.UiText.T(Context, "admin.ornaments.index.btn.delete")
+                            </button>
+                        </td>
+                    </tr>
+                }
+                @if (!Model.Any())
+                {
+                    <tr>
+                        <td colspan="6" class="text-center text-muted py-5">
+                            <i class="bi bi-grid-3x3-gap" style="font-size:2rem; display:block; margin-bottom:8px;"></i>
+                            @BelarusHeritage.Localization.UiText.T(Context, "admin.ornaments.index.empty")
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+
+    @if (totalPages > 1)
+    {
+        <div class="admin-card-body pt-0">
+            <nav>
+                <ul class="pagination pagination-sm justify-content-center mb-0">
+                    @for (int p = 1; p <= totalPages; p++)
+                    {
+                        var active = p == currentPage ? "active" : "";
+                        <li class="page-item @active">
+                            <a class="page-link"
+                               href="@Url.Action("Index", new { page = p, q = ViewBag.Search, visibility = visibility })">@p</a>
+                        </li>
+                    }
+                </ul>
+            </nav>
+        </div>
+    }
+</div>
+
+@section Scripts {
+<script>
+const i18nOrnaments = {
+    visibilityConfirm: '@BelarusHeritage.Localization.UiText.T(Context, "admin.ornaments.index.js.visibilityConfirm")',
+    error: '@BelarusHeritage.Localization.UiText.T(Context, "admin.ornaments.index.js.error")',
+    publicStatus: '@BelarusHeritage.Localization.UiText.T(Context, "admin.ornaments.public")',
+    hiddenStatus: '@BelarusHeritage.Localization.UiText.T(Context, "admin.ornaments.hidden")',
+    hide: '@BelarusHeritage.Localization.UiText.T(Context, "admin.ornaments.hide")',
+    publish: '@BelarusHeritage.Localization.UiText.T(Context, "admin.ornaments.publish")',
+    publishedToast: '@BelarusHeritage.Localization.UiText.T(Context, "admin.ornaments.index.js.published")',
+    hiddenToast: '@BelarusHeritage.Localization.UiText.T(Context, "admin.ornaments.index.js.hidden")',
+    confirmTitle: '@BelarusHeritage.Localization.UiText.T(Context, "admin.ornaments.index.deleteTitle")',
+    deleteConfirm: '@BelarusHeritage.Localization.UiText.T(Context, "admin.ornaments.index.js.deleteConfirm")',
+    deleteError: '@BelarusHeritage.Localization.UiText.T(Context, "admin.ornaments.index.js.deleteError")',
+    deletedToast: '@BelarusHeritage.Localization.UiText.T(Context, "admin.ornaments.index.js.deleted")',
+    deleteBtn: '@BelarusHeritage.Localization.UiText.T(Context, "admin.ornaments.index.btn.delete")'
+};
+
+async function toggleOrnamentVisibility(ornamentId, btn) {
+    showConfirm(i18nOrnaments.visibilityConfirm, async () => {
+        const res = await fetch('/AdminOrnaments/ToggleVisibility', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(ornamentId)
+        });
+        const json = await res.json();
+        if (!json.success) {
+            showToast(json.message || i18nOrnaments.error, 'danger');
+            return;
+        }
+
+        const isPublic = !!json.isPublic;
+        const statusEl = document.getElementById('ornStatus_' + ornamentId);
+        statusEl.textContent = isPublic ? i18nOrnaments.publicStatus : i18nOrnaments.hiddenStatus;
+        statusEl.className = 'orn-status ' + (isPublic ? 'orn-status-public' : 'orn-status-hidden');
+        btn.textContent = isPublic ? i18nOrnaments.hide : i18nOrnaments.publish;
+        showToast(isPublic ? i18nOrnaments.publishedToast : i18nOrnaments.hiddenToast, 'success');
+    }, i18nOrnaments.confirmTitle);
+}
+
+async function deleteOrnament(ornamentId) {
+    showConfirm(i18nOrnaments.deleteConfirm, async () => {
+        const res = await fetch('/AdminOrnaments/Delete', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(ornamentId)
+        });
+        const json = await res.json();
+        if (!json.success) {
+            showToast(json.message || i18nOrnaments.deleteError, 'danger');
+            return;
+        }
+
+        document.getElementById('ornRow_' + ornamentId)?.remove();
+        showToast(i18nOrnaments.deletedToast, 'success');
+    }, i18nOrnaments.deleteBtn);
+}
+</script>
+}

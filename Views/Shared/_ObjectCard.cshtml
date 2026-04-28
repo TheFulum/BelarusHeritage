@@ -1,0 +1,153 @@
+@model BelarusHeritage.Models.Domain.HeritageObject
+@{
+    var lang = BelarusHeritage.Localization.UiText.Lang(Context);
+    var name = lang == "en" ? Model.NameEn : lang == "be" ? Model.NameBe : Model.NameRu;
+    var regionName = Model.Region == null ? "" :
+        (lang == "en" ? Model.Region.NameEn : lang == "be" ? Model.Region.NameBe : Model.Region.NameRu);
+    var shortDesc = lang == "en" ? Model.ShortDescEn : lang == "be" ? Model.ShortDescBe : Model.ShortDescRu;
+    var favoriteIds = ViewData["FavoriteObjectIds"] as HashSet<int>;
+    var isFavorite = ViewBag.IsFavorite == true || (favoriteIds?.Contains(Model.Id) == true);
+    var mainImage = Model.Images?.FirstOrDefault(i => i.IsMain);
+    var imageUrl = NormalizeImageUrl(mainImage?.ThumbUrl ?? mainImage?.Url ?? Model.MainImageUrl);
+}
+
+<div class="object-card">
+    <a href="@Url.Action("Detail", "Object", new { slug = Model.Slug })" class="object-card-link">
+        <div class="object-card-image">
+            @if (!string.IsNullOrEmpty(imageUrl))
+            {
+                <img src="@imageUrl" alt="@name" loading="lazy">
+            }
+            else
+            {
+                <div class="object-card-placeholder">
+                    <i class="bi bi-building"></i>
+                </div>
+            }
+
+            @if (Model.Category != null)
+            {
+                <span class="object-card-category" style="background-color: @Model.Category.ColorHex">
+                    <i class="@Model.Category.IconClass"></i>
+                </span>
+            }
+
+            <!-- Rating Badge -->
+            @if (Model.RatingCount > 0)
+            {
+                <span class="object-card-rating">
+                    <i class="bi bi-star-fill"></i>
+                    @Model.RatingAvg?.ToString("F1")
+                </span>
+            }
+        </div>
+
+        <div class="object-card-content">
+            <h5 class="object-card-title">@name</h5>
+
+            <div class="object-card-meta">
+                @if (!string.IsNullOrEmpty(regionName))
+                {
+                    <span class="object-card-region">
+                        <i class="bi bi-geo-alt"></i>
+                        @regionName
+                    </span>
+                }
+
+                @if (Model.CenturyStart.HasValue)
+                {
+                    <span class="object-card-century">
+                        @GetCenturyText(Model.CenturyStart, Model.CenturyEnd, lang)
+                    </span>
+                }
+            </div>
+
+            @if (!string.IsNullOrEmpty(shortDesc))
+            {
+                <p class="object-card-description">
+                    @shortDesc.Substring(0, Math.Min(100, shortDesc.Length))@(shortDesc.Length > 100 ? "..." : "")
+                </p>
+            }
+        </div>
+    </a>
+
+    <div class="object-card-actions">
+        <a class="btn-add-route"
+           href="@Url.Action("Index", "RouteBuilder", new { addObject = Model.Id })"
+           title="@BelarusHeritage.Localization.UiText.T(Context, "object.card.addToRoute")">
+            <i class="bi bi-signpost-split"></i>
+        </a>
+        <button class="btn-favorite @(isFavorite ? "active" : "")"
+                onclick="toggleFavorite(@Model.Id, event)"
+                title="@BelarusHeritage.Localization.UiText.T(Context, "object.card.addToFavorites")">
+            <i class="bi bi-heart"></i>
+        </button>
+    </div>
+</div>
+
+@functions {
+    private string GetCenturyText(short? start, short? end, string lang)
+    {
+        if (!start.HasValue) return "";
+
+        var era = start < 0
+            ? BelarusHeritage.Localization.UiText.T(Context, "meta.era.bc")
+            : BelarusHeritage.Localization.UiText.T(Context, "meta.era.century");
+
+        var startText = GetRomanCentury(Math.Abs((int)start));
+
+        if (end.HasValue && end != start)
+        {
+            var endText = GetRomanCentury(Math.Abs((int)end));
+            return $"{startText}–{endText} {era}";
+        }
+
+        return $"{startText} {era}";
+    }
+
+    private string GetRomanCentury(int century)
+    {
+        return century switch
+        {
+            1 => "I", 2 => "II", 3 => "III", 4 => "IV", 5 => "V",
+            6 => "VI", 7 => "VII", 8 => "VIII", 9 => "IX", 10 => "X",
+            11 => "XI", 12 => "XII", 13 => "XIII", 14 => "XIV", 15 => "XV",
+            16 => "XVI", 17 => "XVII", 18 => "XVIII", 19 => "XIX", 20 => "XX",
+            21 => "XXI", _ => century.ToString()
+        };
+    }
+
+    private string NormalizeImageUrl(string? url)
+    {
+        if (string.IsNullOrWhiteSpace(url))
+            return "";
+        url = url.Replace('\\', '/');
+        if (url.StartsWith("thumb_uploads/", StringComparison.OrdinalIgnoreCase))
+        {
+            var rest = url.Substring("thumb_uploads/".Length);
+            var idx = rest.LastIndexOf('/');
+            if (idx >= 0)
+            {
+                var dir = rest.Substring(0, idx);
+                var file = rest.Substring(idx + 1);
+                url = $"uploads/{dir}/thumb_{file}";
+            }
+        }
+        else if (url.StartsWith("/thumb_uploads/", StringComparison.OrdinalIgnoreCase))
+        {
+            var rest = url.Substring("/thumb_uploads/".Length);
+            var idx = rest.LastIndexOf('/');
+            if (idx >= 0)
+            {
+                var dir = rest.Substring(0, idx);
+                var file = rest.Substring(idx + 1);
+                url = $"uploads/{dir}/thumb_{file}";
+            }
+        }
+        if (url.StartsWith("http://", StringComparison.OrdinalIgnoreCase) ||
+            url.StartsWith("https://", StringComparison.OrdinalIgnoreCase) ||
+            url.StartsWith("/", StringComparison.Ordinal))
+            return url;
+        return "/" + url;
+    }
+}

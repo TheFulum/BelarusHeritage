@@ -1,0 +1,428 @@
+@model BelarusHeritage.Models.Domain.Quiz
+@{
+    Layout = "_AdminLayout";
+    ViewData["Title"] = BelarusHeritage.Localization.UiText.T(Context, "admin.quizzes.edit.title");
+    var stat = ViewBag.Statistics as BelarusHeritage.Models.ViewModels.QuizStatistics;
+    string L(string key) => BelarusHeritage.Localization.UiText.T(Context, $"admin.quizzes.edit.{key}");
+}
+
+<div class="admin-page-header">
+    <h1 class="admin-page-title">@BelarusHeritage.Localization.UiText.T(Context, "admin.nav.quizzes"): @Model.TitleRu</h1>
+    <div class="admin-page-breadcrumb">
+        <a href="/AdminDashboard">@BelarusHeritage.Localization.UiText.T(Context, "admin.nav.dashboard")</a>
+        <span class="sep">/</span>
+        <a href="/AdminQuizzes">@BelarusHeritage.Localization.UiText.T(Context, "admin.nav.quizzes")</a>
+        <span class="sep">/</span>
+        <span>@BelarusHeritage.Localization.UiText.T(Context, "admin.quizzes.edit.title")</span>
+    </div>
+</div>
+
+@if (stat != null && stat.TotalAttempts > 0)
+{
+    <div class="row g-3 mb-3">
+        <div class="col-6 col-md-3">
+            <div class="admin-card text-center py-3">
+                <div style="font-size:1.5rem; font-weight:700; color:#8B1A2A;">@stat.TotalAttempts</div>
+                <div style="font-size:.78rem; color:#6b7280;">@BelarusHeritage.Localization.UiText.T(Context, "admin.quizzes.index.col.attempts")</div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="admin-card text-center py-3">
+                <div style="font-size:1.5rem; font-weight:700; color:#8B1A2A;">@stat.UniqueUsers</div>
+                <div style="font-size:.78rem; color:#6b7280;">@BelarusHeritage.Localization.UiText.T(Context, "admin.quizzes.edit.stats.uniquePlayers")</div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="admin-card text-center py-3">
+                <div style="font-size:1.5rem; font-weight:700; color:#8B1A2A;">@stat.AverageScore.ToString("0.0")%</div>
+                <div style="font-size:.78rem; color:#6b7280;">@BelarusHeritage.Localization.UiText.T(Context, "admin.quizzes.index.col.avgScore")</div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="admin-card text-center py-3">
+                <div style="font-size:1.5rem; font-weight:700; color:#8B1A2A;">@stat.HighScore%</div>
+                <div style="font-size:.78rem; color:#6b7280;">@BelarusHeritage.Localization.UiText.T(Context, "admin.quizzes.edit.stats.record")</div>
+            </div>
+        </div>
+    </div>
+}
+
+<!-- Basic info -->
+<form asp-action="SaveQuiz" method="post" id="quizMetaForm">
+    <input asp-for="Id" type="hidden">
+    <div class="admin-card mb-3">
+        <div class="admin-card-header d-flex align-items-center gap-2">
+            <i class="bi bi-info-circle"></i>
+            <span style="font-weight:600; font-size:.875rem;">@BelarusHeritage.Localization.UiText.T(Context, "admin.quizzes.edit.section.mainInfo")</span>
+        </div>
+        <div class="admin-card-body">
+            <div class="row g-3">
+                <div class="col-md-3">
+                    <label class="form-label" style="font-size:.8rem; font-weight:600;">@L("label.slugReq")</label>
+                    <input asp-for="Slug" class="form-control" required>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label" style="font-size:.8rem; font-weight:600;">@L("label.type")</label>
+                    <select asp-for="Type" class="form-select">
+                        <option value="0">@BelarusHeritage.Localization.UiText.T(Context, "admin.quizzes.index.type.imageGuess") (@BelarusHeritage.Localization.UiText.T(Context, "admin.quizzes.form.byPhoto"))</option>
+                        <option value="1">@BelarusHeritage.Localization.UiText.T(Context, "admin.quizzes.index.type.regionGuess")</option>
+                        <option value="2">@BelarusHeritage.Localization.UiText.T(Context, "admin.quizzes.index.type.dragDrop")</option>
+                        <option value="3">@BelarusHeritage.Localization.UiText.T(Context, "admin.quizzes.index.type.centuryGuess")</option>
+                        <option value="4">@BelarusHeritage.Localization.UiText.T(Context, "admin.quizzes.index.type.oddOneOut")</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label" style="font-size:.8rem; font-weight:600;">@BelarusHeritage.Localization.UiText.T(Context, "admin.timeline.index.col.order")</label>
+                    <input asp-for="SortOrder" type="number" class="form-control" min="0">
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label" style="font-size:.8rem; font-weight:600;">@BelarusHeritage.Localization.UiText.T(Context, "admin.quizzes.form.timeLimitSec")</label>
+                    <input asp-for="TimeLimit" type="number" class="form-control" min="0">
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label" style="font-size:.8rem; font-weight:600;">@L("label.nameRuReq")</label>
+                    <input asp-for="TitleRu" class="form-control" required>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label" style="font-size:.8rem; font-weight:600;">@L("label.nameBe")</label>
+                    <input asp-for="TitleBe" class="form-control">
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label" style="font-size:.8rem; font-weight:600;">@L("label.nameEn")</label>
+                    <input asp-for="TitleEn" class="form-control">
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label" style="font-size:.8rem; font-weight:600;">@BelarusHeritage.Localization.UiText.T(Context, "admin.timeline.form.descRu")</label>
+                    <textarea asp-for="DescriptionRu" class="form-control" rows="2"></textarea>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label" style="font-size:.8rem; font-weight:600;">@BelarusHeritage.Localization.UiText.T(Context, "admin.timeline.form.descEn")</label>
+                    <textarea asp-for="DescriptionEn" class="form-control" rows="2"></textarea>
+                </div>
+                <div class="col-12">
+                    <div class="form-check">
+                        <input asp-for="IsActive" class="form-check-input" type="checkbox">
+                        <label class="form-check-label" style="font-size:.875rem;">@L("label.active")</label>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="d-flex gap-2 mb-4">
+        <button type="submit" class="btn btn-danger">
+            <i class="bi bi-check2 me-1"></i>@BelarusHeritage.Localization.UiText.T(Context, "admin.quizzes.edit.btn.saveInfo")
+        </button>
+        <a href="/AdminQuizzes" class="btn btn-outline-secondary">@BelarusHeritage.Localization.UiText.T(Context, "admin.quizzes.edit.btn.backToList")</a>
+    </div>
+</form>
+
+<!-- Questions -->
+<div class="d-flex align-items-center gap-3 mb-3">
+    <h2 style="font-size:1rem; font-weight:700; margin:0;">@BelarusHeritage.Localization.UiText.T(Context, "admin.quizzes.edit.questions"): (@Model.Questions.Count)</h2>
+    <button class="btn btn-sm btn-outline-danger" onclick="addQuestion()">
+        <i class="bi bi-plus-lg me-1"></i>@BelarusHeritage.Localization.UiText.T(Context, "admin.quizzes.edit.btn.addQuestion")
+    </button>
+</div>
+
+<div id="questionsList">
+    @foreach (var q in Model.Questions.OrderBy(q => q.SortOrder))
+    {
+        <div class="admin-card mb-3 question-card" data-qid="@q.Id">
+            <div class="admin-card-header d-flex align-items-center gap-2">
+                <span class="text-muted" style="font-size:.8rem;">@BelarusHeritage.Localization.UiText.T(Context, "admin.quizzes.edit.questionNumber") #@q.SortOrder</span>
+                <button type="button" class="btn btn-sm btn-outline-danger btn-icon ms-auto"
+                        onclick="deleteQuestion(@q.Id, this)">
+                    <i class="bi bi-trash3"></i>
+                </button>
+            </div>
+            <div class="admin-card-body">
+                <div class="row g-2 mb-3">
+                    <div class="col-md-4">
+                        <label class="form-label" style="font-size:.78rem; font-weight:600;">@BelarusHeritage.Localization.UiText.T(Context, "admin.quizzes.edit.textRu")</label>
+                        <input type="text" class="form-control form-control-sm q-body-ru" value="@q.BodyRu"
+                               placeholder="@BelarusHeritage.Localization.UiText.T(Context, "admin.quizzes.edit.questionPh")">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label" style="font-size:.78rem; font-weight:600;">@BelarusHeritage.Localization.UiText.T(Context, "admin.quizzes.edit.textBe")</label>
+                        <input type="text" class="form-control form-control-sm q-body-be" value="@q.BodyBe">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label" style="font-size:.78rem; font-weight:600;">@BelarusHeritage.Localization.UiText.T(Context, "admin.quizzes.edit.textEn")</label>
+                        <input type="text" class="form-control form-control-sm q-body-en" value="@q.BodyEn">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label" style="font-size:.78rem; font-weight:600;">@BelarusHeritage.Localization.UiText.T(Context, "admin.quizzes.edit.questionImage")</label>
+                        <input type="file" class="form-control form-control-sm q-image-file"
+                               accept="image/jpeg,image/png,image/webp" onchange="uploadQuestionImage(@q.Id, this)">
+                        <div class="form-text" style="font-size:.72rem;">@BelarusHeritage.Localization.UiText.T(Context, "admin.objects.edit.uploadHint2")</div>
+                        <input type="hidden" class="q-image" value="@q.ImageUrl">
+                    </div>
+                    <div class="col-md-4">
+                        <div class="border rounded p-2 h-100 d-flex align-items-center justify-content-center q-image-preview-wrap" style="min-height:80px;">
+                            @if (!string.IsNullOrEmpty(q.ImageUrl))
+                            {
+                                <img src="@q.ImageUrl" class="q-image-preview" alt="" style="max-height:120px;max-width:100%;">
+                            }
+                            else
+                            {
+                                <span class="text-muted q-image-empty" style="font-size:.75rem;">@BelarusHeritage.Localization.UiText.T(Context, "admin.quizzes.edit.noImage")</span>
+                            }
+                        </div>
+                    </div>
+                    <div class="col-md-2 d-flex align-items-end">
+                        <button type="button" class="btn btn-sm btn-outline-secondary w-100"
+                                onclick="saveQuestion(@q.Id, this)">
+                            <i class="bi bi-floppy me-1"></i>@L("btn.save")
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Answers -->
+                <div class="answers-block">
+                    <div class="d-flex align-items-center gap-2 mb-2">
+                        <span style="font-size:.78rem; font-weight:600; color:#4a5568;">@BelarusHeritage.Localization.UiText.T(Context, "admin.quizzes.edit.answers")</span>
+                        <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-2"
+                                style="font-size:.75rem;" onclick="addAnswer(@q.Id, this)">
+                            <i class="bi bi-plus-lg"></i>
+                        </button>
+                    </div>
+                    @foreach (var a in q.Answers.OrderBy(a => a.SortOrder))
+                    {
+                        <div class="answer-row d-flex align-items-center gap-2 mb-2" data-aid="@a.Id">
+                            <input type="text" class="form-control form-control-sm a-body-ru" value="@a.BodyRu"
+                                   placeholder="@BelarusHeritage.Localization.UiText.T(Context, "admin.quizzes.edit.answerPh")" style="min-width:140px;">
+                            <input type="text" class="form-control form-control-sm a-body-be" value="@a.BodyBe"
+                                   placeholder="BE" style="min-width:110px;">
+                            <input type="text" class="form-control form-control-sm a-body-en" value="@a.BodyEn"
+                                   placeholder="EN" style="min-width:110px;">
+                            <div class="form-check mb-0 mx-1 flex-shrink-0">
+                                <input class="form-check-input a-correct" type="checkbox" @(a.IsCorrect ? "checked" : "")
+                                       title="@BelarusHeritage.Localization.UiText.T(Context, "admin.quizzes.edit.correct")">
+                                <label class="form-check-label" style="font-size:.75rem;">✓</label>
+                            </div>
+                            <button type="button" class="btn btn-sm btn-outline-secondary btn-icon flex-shrink-0"
+                                    onclick="saveAnswer(@a.Id, this)" title="@BelarusHeritage.Localization.UiText.T(Context, "admin.quizzes.edit.save")">
+                                <i class="bi bi-floppy"></i>
+                            </button>
+                            <button type="button" class="btn btn-sm btn-outline-danger btn-icon flex-shrink-0"
+                                    onclick="deleteAnswer(@a.Id, this)" title="@BelarusHeritage.Localization.UiText.T(Context, "admin.quizzes.edit.delete")">
+                                <i class="bi bi-x-lg"></i>
+                            </button>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+@section Scripts {
+<script>
+const quizId = @Model.Id;
+const i18nQuizEdit = {
+    addQuestionError: '@BelarusHeritage.Localization.UiText.T(Context, "admin.quizzes.edit.js.addQuestionError")',
+    newQuestion: '@BelarusHeritage.Localization.UiText.T(Context, "admin.quizzes.edit.newQuestion")',
+    textRu: '@BelarusHeritage.Localization.UiText.T(Context, "admin.quizzes.edit.textRu")',
+    textBe: '@BelarusHeritage.Localization.UiText.T(Context, "admin.quizzes.edit.textBe")',
+    textEn: '@BelarusHeritage.Localization.UiText.T(Context, "admin.quizzes.edit.textEn")',
+    questionImage: '@BelarusHeritage.Localization.UiText.T(Context, "admin.quizzes.edit.questionImage")',
+    noImage: '@BelarusHeritage.Localization.UiText.T(Context, "admin.quizzes.edit.noImage")',
+    save: '@L("btn.save")',
+    answers: '@BelarusHeritage.Localization.UiText.T(Context, "admin.quizzes.edit.answers")',
+    saveQuestionOk: '@BelarusHeritage.Localization.UiText.T(Context, "admin.quizzes.edit.js.saveQuestionOk")',
+    saveError: '@L("js.saveError")',
+    uploadError: '@BelarusHeritage.Localization.UiText.T(Context, "admin.quizzes.edit.js.uploadError")',
+    uploadOk: '@BelarusHeritage.Localization.UiText.T(Context, "admin.quizzes.edit.js.uploadOk")',
+    deleteQuestionConfirm: '@BelarusHeritage.Localization.UiText.T(Context, "admin.quizzes.edit.js.deleteQuestionConfirm")',
+    deleteError: '@BelarusHeritage.Localization.UiText.T(Context, "admin.quizzes.index.deleteError")',
+    deleteBtn: '@L("btn.delete")',
+    addAnswerError: '@BelarusHeritage.Localization.UiText.T(Context, "admin.quizzes.edit.js.addAnswerError")',
+    saveAnswerOk: '@BelarusHeritage.Localization.UiText.T(Context, "admin.quizzes.edit.js.saveAnswerOk")'
+};
+
+async function addQuestion() {
+    const res = await fetch('/AdminQuizzes/AddQuestion', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(quizId)
+    });
+    const json = await res.json();
+    if (!json.success) { showToast(i18nQuizEdit.addQuestionError, 'danger'); return; }
+
+    const qid = json.questionId;
+    const card = document.createElement('div');
+    card.className = 'admin-card mb-3 question-card';
+    card.dataset.qid = qid;
+    card.innerHTML = `
+        <div class="admin-card-header d-flex align-items-center gap-2">
+            <span class="text-muted" style="font-size:.8rem;">${i18nQuizEdit.newQuestion}</span>
+            <button type="button" class="btn btn-sm btn-outline-danger btn-icon ms-auto" onclick="deleteQuestion(${qid}, this)">
+                <i class="bi bi-trash3"></i>
+            </button>
+        </div>
+        <div class="admin-card-body">
+            <div class="row g-2 mb-3">
+                <div class="col-md-4">
+                    <label class="form-label" style="font-size:.78rem; font-weight:600;">${i18nQuizEdit.textRu}</label>
+                    <input type="text" class="form-control form-control-sm q-body-ru" placeholder="@BelarusHeritage.Localization.UiText.T(Context, "admin.quizzes.edit.questionPh")">
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label" style="font-size:.78rem; font-weight:600;">${i18nQuizEdit.textBe}</label>
+                    <input type="text" class="form-control form-control-sm q-body-be">
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label" style="font-size:.78rem; font-weight:600;">${i18nQuizEdit.textEn}</label>
+                    <input type="text" class="form-control form-control-sm q-body-en">
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label" style="font-size:.78rem; font-weight:600;">${i18nQuizEdit.questionImage}</label>
+                    <input type="file" class="form-control form-control-sm q-image-file"
+                           accept="image/jpeg,image/png,image/webp" onchange="uploadQuestionImage(${qid}, this)">
+                    <div class="form-text" style="font-size:.72rem;">@BelarusHeritage.Localization.UiText.T(Context, "admin.objects.edit.uploadHint2")</div>
+                    <input type="hidden" class="q-image" value="">
+                </div>
+                <div class="col-md-4">
+                    <div class="border rounded p-2 h-100 d-flex align-items-center justify-content-center q-image-preview-wrap" style="min-height:80px;">
+                        <span class="text-muted q-image-empty" style="font-size:.75rem;">${i18nQuizEdit.noImage}</span>
+                    </div>
+                </div>
+                <div class="col-md-2 d-flex align-items-end">
+                    <button type="button" class="btn btn-sm btn-outline-secondary w-100" onclick="saveQuestion(${qid}, this)">
+                        <i class="bi bi-floppy me-1"></i>${i18nQuizEdit.save}
+                    </button>
+                </div>
+            </div>
+            <div class="answers-block">
+                <div class="d-flex align-items-center gap-2 mb-2">
+                    <span style="font-size:.78rem; font-weight:600; color:#4a5568;">${i18nQuizEdit.answers}</span>
+                    <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-2"
+                            style="font-size:.75rem;" onclick="addAnswer(${qid}, this)">
+                        <i class="bi bi-plus-lg"></i>
+                    </button>
+                </div>
+            </div>
+        </div>`;
+    document.getElementById('questionsList').appendChild(card);
+    card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+
+async function saveQuestion(id, btn) {
+    const card = btn.closest('.question-card');
+    const data = {
+        id,
+        bodyRu: card.querySelector('.q-body-ru').value,
+        bodyBe: card.querySelector('.q-body-be').value,
+        bodyEn: card.querySelector('.q-body-en').value
+    };
+    const res = await fetch('/AdminQuizzes/SaveQuestion', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+    });
+    const json = await res.json();
+    if (json.success) showToast(i18nQuizEdit.saveQuestionOk, 'success');
+    else showToast(i18nQuizEdit.saveError, 'danger');
+}
+
+async function uploadQuestionImage(questionId, input) {
+    const file = input.files && input.files[0];
+    if (!file) return;
+
+    const card = input.closest('.question-card');
+    const fd = new FormData();
+    fd.append('file', file);
+    fd.append('questionId', questionId);
+
+    const res = await fetch('/AdminQuizzes/UploadQuestionImage', { method: 'POST', body: fd });
+    const json = await res.json();
+    if (!json.success) {
+        showToast(json.message || i18nQuizEdit.uploadError, 'danger');
+        input.value = '';
+        return;
+    }
+
+    card.querySelector('.q-image').value = json.imageUrl || '';
+    const wrap = card.querySelector('.q-image-preview-wrap');
+    if (wrap) {
+        wrap.innerHTML = `<img src="${json.imageUrl}" class="q-image-preview" alt="" style="max-height:120px;max-width:100%;">`;
+    }
+    showToast(i18nQuizEdit.uploadOk, 'success');
+}
+
+function deleteQuestion(id, btn) {
+    showConfirm(i18nQuizEdit.deleteQuestionConfirm, async () => {
+        const res = await fetch('/AdminQuizzes/DeleteQuestion', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(id)
+        });
+        const json = await res.json();
+        if (json.success) btn.closest('.question-card').remove();
+        else showToast(i18nQuizEdit.deleteError, 'danger');
+    }, i18nQuizEdit.deleteBtn);
+}
+
+async function addAnswer(questionId, btn) {
+    const res = await fetch('/AdminQuizzes/AddAnswer', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(questionId)
+    });
+    const json = await res.json();
+    if (!json.success) { showToast(i18nQuizEdit.addAnswerError, 'danger'); return; }
+
+    const aid = json.answerId;
+    const block = btn.closest('.answers-block');
+    const row = document.createElement('div');
+    row.className = 'answer-row d-flex align-items-center gap-2 mb-2';
+    row.dataset.aid = aid;
+    row.innerHTML = `
+        <input type="text" class="form-control form-control-sm a-body-ru" placeholder="@BelarusHeritage.Localization.UiText.T(Context, "admin.quizzes.edit.answerPh")" style="min-width:140px;">
+        <input type="text" class="form-control form-control-sm a-body-be" placeholder="BE" style="min-width:110px;">
+        <input type="text" class="form-control form-control-sm a-body-en" placeholder="EN" style="min-width:110px;">
+        <div class="form-check mb-0 mx-1 flex-shrink-0">
+            <input class="form-check-input a-correct" type="checkbox" title="@BelarusHeritage.Localization.UiText.T(Context, "admin.quizzes.edit.correct")">
+            <label class="form-check-label" style="font-size:.75rem;">✓</label>
+        </div>
+        <button type="button" class="btn btn-sm btn-outline-secondary btn-icon flex-shrink-0"
+                onclick="saveAnswer(${aid}, this)" title="@BelarusHeritage.Localization.UiText.T(Context, "admin.quizzes.edit.save")">
+            <i class="bi bi-floppy"></i>
+        </button>
+        <button type="button" class="btn btn-sm btn-outline-danger btn-icon flex-shrink-0"
+                onclick="deleteAnswer(${aid}, this)" title="@BelarusHeritage.Localization.UiText.T(Context, "admin.quizzes.edit.delete")">
+            <i class="bi bi-x-lg"></i>
+        </button>`;
+    block.appendChild(row);
+}
+
+async function saveAnswer(id, btn) {
+    const row = btn.closest('.answer-row');
+    const data = {
+        id,
+        bodyRu: row.querySelector('.a-body-ru').value,
+        bodyBe: row.querySelector('.a-body-be').value,
+        bodyEn: row.querySelector('.a-body-en').value,
+        isCorrect: row.querySelector('.a-correct').checked
+    };
+    const res = await fetch('/AdminQuizzes/SaveAnswer', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+    });
+    const json = await res.json();
+    if (json.success) showToast(i18nQuizEdit.saveAnswerOk, 'success');
+    else showToast(i18nQuizEdit.saveError, 'danger');
+}
+
+async function deleteAnswer(id, btn) {
+    const res = await fetch('/AdminQuizzes/DeleteAnswer', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(id)
+    });
+    const json = await res.json();
+    if (json.success) btn.closest('.answer-row').remove();
+    else showToast(i18nQuizEdit.deleteError, 'danger');
+}
+</script>
+}

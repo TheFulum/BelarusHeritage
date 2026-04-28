@@ -1,0 +1,139 @@
+@model List<BelarusHeritage.Models.Domain.Quiz>
+@{
+    var lang = BelarusHeritage.Localization.UiText.Lang(Context);
+    ViewData["Title"] = BelarusHeritage.Localization.UiText.T(Context, "quiz.index.title");
+    string L(string key) => BelarusHeritage.Localization.UiText.T(Context, $"quiz.index.{key}");
+    string TitleOf(BelarusHeritage.Models.Domain.Quiz q) => lang == "en" ? q.TitleEn : lang == "be" ? q.TitleBe : q.TitleRu;
+    string DescOf(BelarusHeritage.Models.Domain.Quiz q)  => (lang == "en" ? q.DescriptionEn : q.DescriptionRu) ?? "";
+
+    string TypeLabel(BelarusHeritage.Models.Domain.QuizType t) => t switch {
+        BelarusHeritage.Models.Domain.QuizType.ImageGuess => L("type.imageGuess"),
+        BelarusHeritage.Models.Domain.QuizType.RegionGuess => L("type.regionGuess"),
+        BelarusHeritage.Models.Domain.QuizType.DragDrop => L("type.dragDrop"),
+        BelarusHeritage.Models.Domain.QuizType.CenturyGuess => L("type.centuryGuess"),
+        BelarusHeritage.Models.Domain.QuizType.OddOneOut => L("type.oddOneOut"),
+        _ => t.ToString()
+    };
+}
+
+@section Styles {
+<style>
+    .quiz-hero {
+        background: linear-gradient(135deg, #0f2027 0%, #2c5364 60%, #203a43 100%);
+        padding: 56px 0 44px;
+        text-align: center;
+    }
+    .quiz-hero-title {
+        font-family: 'Cormorant Garamond', serif;
+        font-size: clamp(1.8rem, 4vw, 3rem);
+        font-weight: 700; color: #fff;
+        margin-bottom: 8px;
+    }
+    .quiz-hero-sub { font-size: .9rem; color: rgba(255,255,255,.6); margin: 0; }
+
+    .quiz-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 24px; padding: 48px 0; }
+
+    .quiz-card {
+        background: #fff;
+        border-radius: 14px;
+        overflow: hidden;
+        box-shadow: 0 2px 12px rgba(0,0,0,.07);
+        display: flex; flex-direction: column;
+        transition: transform .25s, box-shadow .25s;
+        text-decoration: none; color: inherit;
+    }
+    .quiz-card:hover { transform: translateY(-4px); box-shadow: 0 8px 28px rgba(0,0,0,.13); }
+
+    .quiz-card-cover {
+        height: 160px; object-fit: cover;
+        display: block; width: 100%;
+    }
+    .quiz-card-cover-placeholder {
+        height: 160px;
+        background: linear-gradient(135deg, #1a1a2e, #8B1A2A);
+        display: flex; align-items: center; justify-content: center;
+        color: rgba(255,255,255,.4); font-size: 2.5rem;
+    }
+    .quiz-card-body { padding: 18px 20px 20px; flex: 1; display: flex; flex-direction: column; }
+    .quiz-card-badge {
+        display: inline-block;
+        font-size: .7rem; font-weight: 600;
+        background: #f3f0ea; color: #8B1A2A;
+        border-radius: 4px; padding: 2px 8px;
+        margin-bottom: 10px;
+        letter-spacing: .03em;
+    }
+    .quiz-card-title {
+        font-family: 'Cormorant Garamond', serif;
+        font-size: 1.15rem; font-weight: 700;
+        color: #1a202c; margin-bottom: 8px; line-height: 1.3;
+    }
+    .quiz-card-desc { font-size: .82rem; color: #6b7280; line-height: 1.5; flex: 1; margin-bottom: 14px; }
+    .quiz-card-meta { font-size: .78rem; color: #9ca3af; margin-bottom: 14px; }
+    .quiz-card-meta i { margin-right: 4px; }
+    .quiz-card-btn {
+        display: block; text-align: center;
+        background: #8B1A2A; color: #fff;
+        border-radius: 8px; padding: 9px 0;
+        font-size: .85rem; font-weight: 600;
+        text-decoration: none;
+        transition: background .2s;
+    }
+    .quiz-card-btn:hover { background: #a52032; color: #fff; }
+
+    .quiz-empty { text-align: center; padding: 80px 0; color: #9ca3af; }
+</style>
+}
+
+<div class="quiz-hero">
+    <div class="container">
+        <h1 class="quiz-hero-title">@BelarusHeritage.Localization.UiText.T(Context, "quiz.index.title")</h1>
+        <p class="quiz-hero-sub">@BelarusHeritage.Localization.UiText.T(Context, "quiz.index.subtitle")</p>
+    </div>
+</div>
+
+<div class="container">
+    @if (!Model.Any())
+    {
+        <div class="quiz-empty">
+            <i class="bi bi-patch-question" style="font-size:3rem; display:block; margin-bottom:12px;"></i>
+            @BelarusHeritage.Localization.UiText.T(Context, "quiz.index.empty")
+        </div>
+    }
+    else
+    {
+        <div class="quiz-grid">
+            @foreach (var q in Model)
+            {
+                <div class="quiz-card">
+                    @if (!string.IsNullOrEmpty(q.CoverUrl))
+                    {
+                        <img src="@q.CoverUrl" class="quiz-card-cover" alt="@TitleOf(q)" loading="lazy">
+                    }
+                    else
+                    {
+                        <div class="quiz-card-cover-placeholder">
+                            <i class="bi bi-patch-question-fill"></i>
+                        </div>
+                    }
+                    <div class="quiz-card-body">
+                        <span class="quiz-card-badge">@TypeLabel(q.Type)</span>
+                        <div class="quiz-card-title">@TitleOf(q)</div>
+                        @if (!string.IsNullOrEmpty(DescOf(q)))
+                        {
+                            <div class="quiz-card-desc">@DescOf(q)</div>
+                        }
+                        <div class="quiz-card-meta">
+                            <i class="bi bi-list-ol"></i>@q.Questions.Count @BelarusHeritage.Localization.UiText.T(Context, "quiz.index.questions")
+                            @if (q.TimeLimit.HasValue && q.TimeLimit > 0)
+                            {
+                                <span class="ms-3"><i class="bi bi-clock"></i>@q.TimeLimit @BelarusHeritage.Localization.UiText.T(Context, "quiz.index.secondsAbbr")</span>
+                            }
+                        </div>
+                        <a href="/Quiz/Play/@q.Slug" class="quiz-card-btn">@BelarusHeritage.Localization.UiText.T(Context, "quiz.index.play")</a>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+</div>

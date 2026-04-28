@@ -1,0 +1,121 @@
+@model BelarusHeritage.Models.ViewModels.AdminQuizzesViewModel
+@{
+    Layout = "_AdminLayout";
+    ViewData["Title"] = BelarusHeritage.Localization.UiText.T(Context, "admin.nav.quizzes");
+    Func<string, string> L = key => BelarusHeritage.Localization.UiText.T(Context, $"admin.quizzes.index.{key}");
+    string QuizTypeLabel(BelarusHeritage.Models.Domain.QuizType t) => t switch {
+        BelarusHeritage.Models.Domain.QuizType.ImageGuess   => L("type.imageGuess"),
+        BelarusHeritage.Models.Domain.QuizType.RegionGuess  => L("type.regionGuess"),
+        BelarusHeritage.Models.Domain.QuizType.DragDrop     => L("type.dragDrop"),
+        BelarusHeritage.Models.Domain.QuizType.CenturyGuess => L("type.centuryGuess"),
+        BelarusHeritage.Models.Domain.QuizType.OddOneOut    => L("type.oddOneOut"),
+        _ => t.ToString()
+    };
+}
+
+<div class="admin-page-header">
+    <h1 class="admin-page-title">@BelarusHeritage.Localization.UiText.T(Context, "admin.nav.quizzes")</h1>
+    <div class="admin-page-breadcrumb">
+        <a href="/AdminDashboard">@BelarusHeritage.Localization.UiText.T(Context, "admin.nav.dashboard")</a>
+        <span class="sep">/</span>
+        <span>@BelarusHeritage.Localization.UiText.T(Context, "admin.nav.quizzes")</span>
+    </div>
+    <a href="/AdminQuizzes/Create" class="btn btn-danger ms-auto">
+        <i class="bi bi-plus-lg me-1"></i>@BelarusHeritage.Localization.UiText.T(Context, "admin.quizzes.create.title")
+    </a>
+</div>
+
+@if (!Model.Quizzes.Any())
+{
+    <div class="admin-card">
+        <div class="admin-card-body text-center py-5 text-muted">
+            <i class="bi bi-patch-question" style="font-size:2.5rem; display:block; margin-bottom:12px;"></i>
+            @L("empty"). <a href="/AdminQuizzes/Create">@L("addFirst")</a>
+        </div>
+    </div>
+}
+else
+{
+    <div class="admin-card">
+        <div class="table-responsive">
+            <table class="table admin-table mb-0">
+                <thead>
+                    <tr>
+                        <th style="width:40px;">#</th>
+                        <th>@BelarusHeritage.Localization.UiText.T(Context, "admin.quizzes.index.col.title")</th>
+                        <th>@BelarusHeritage.Localization.UiText.T(Context, "admin.quizzes.index.col.type")</th>
+                        <th>@BelarusHeritage.Localization.UiText.T(Context, "admin.quizzes.index.col.questions")</th>
+                        <th>@BelarusHeritage.Localization.UiText.T(Context, "admin.quizzes.index.col.attempts")</th>
+                        <th>@BelarusHeritage.Localization.UiText.T(Context, "admin.quizzes.index.col.avgScore")</th>
+                        <th>@L("col.status")</th>
+                        <th style="width:100px;"></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var q in Model.Quizzes)
+                    {
+                        var stat = Model.Statistics.GetValueOrDefault(q.Id);
+                        <tr>
+                            <td class="text-muted" style="font-size:.8rem;">@q.SortOrder</td>
+                            <td>
+                                <div style="font-weight:500; font-size:.875rem;">@q.TitleRu</div>
+                                <div style="font-size:.75rem; color:#9ca3af;"><code>@q.Slug</code></div>
+                            </td>
+                            <td><span class="badge bg-secondary" style="font-size:.72rem;">@QuizTypeLabel(q.Type)</span></td>
+                            <td style="font-size:.875rem;">@q.Questions.Count</td>
+                            <td style="font-size:.875rem;">@(stat?.TotalAttempts ?? 0)</td>
+                            <td style="font-size:.875rem;">
+                                @if (stat != null && stat.TotalAttempts > 0)
+                                {
+                                    <span>@stat.AverageScore.ToString("0.0")%</span>
+                                }
+                                else
+                                {
+                                    <span class="text-muted">—</span>
+                                }
+                            </td>
+                            <td>
+                                @if (q.IsActive)
+                                {
+                                    <span class="badge bg-success" style="font-size:.72rem;">@L("status.active")</span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-secondary" style="font-size:.72rem;">@L("status.hidden")</span>
+                                }
+                            </td>
+                            <td class="text-end d-flex gap-1 justify-content-end">
+                                <a href="/AdminQuizzes/Edit/@q.Id" class="btn btn-sm btn-outline-secondary btn-icon">
+                                    <i class="bi bi-pencil"></i>
+                                </a>
+                                <button class="btn btn-sm btn-outline-danger btn-icon"
+                                        onclick="deleteQuiz(@q.Id, '@Html.Raw(q.TitleRu.Replace("'","\\\'"))')">
+                                    <i class="bi bi-trash3"></i>
+                                </button>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+}
+
+@section Scripts {
+<script>
+const quizDeleteConfirmTpl = '@BelarusHeritage.Localization.UiText.T(Context, "admin.quizzes.index.deleteConfirm")';
+
+function deleteQuiz(id, title) {
+    showConfirm(quizDeleteConfirmTpl.replace('{0}', title), async () => {
+        const res = await fetch('/AdminQuizzes/DeleteQuiz', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(id)
+        });
+        const json = await res.json();
+        if (json.success) location.reload();
+        else showToast('@BelarusHeritage.Localization.UiText.T(Context, "admin.quizzes.index.deleteError")', 'danger');
+    }, '@L("btn.delete")');
+}
+</script>
+}

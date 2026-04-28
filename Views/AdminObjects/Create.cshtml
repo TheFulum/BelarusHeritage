@@ -1,0 +1,432 @@
+@model BelarusHeritage.Models.Domain.HeritageObject
+@{
+    Layout = "_AdminLayout";
+    Func<string, string> L = key => BelarusHeritage.Localization.UiText.T(Context, $"admin.objects.create.{key}");
+    ViewData["Title"] = BelarusHeritage.Localization.UiText.T(Context, "admin.objects.create.title");
+    var regions = ViewBag.Regions as List<BelarusHeritage.Models.Domain.Region> ?? new();
+    var categories = ViewBag.Categories as List<BelarusHeritage.Models.Domain.Category> ?? new();
+    var archStyles = ViewBag.ArchStyles as List<BelarusHeritage.Models.Domain.ArchStyle> ?? new();
+    var tags = ViewBag.Tags as List<BelarusHeritage.Models.Domain.Tag> ?? new();
+}
+
+@section Styles {
+<style>
+    .tab-nav-admin .nav-link { color: #4a5568; border: none; border-bottom: 2px solid transparent; padding: 9px 16px; font-size: .875rem; font-weight: 500; border-radius: 0; }
+    .tab-nav-admin .nav-link.active { color: #8B1A2A; border-bottom-color: #8B1A2A; background: transparent; }
+    .tab-nav-admin { border-bottom: 1px solid #e5e9f0; }
+    .form-label { font-size: .8rem; font-weight: 600; color: #374151; }
+    .form-control, .form-select { font-size: .875rem; }
+    .form-section-title { font-size: .75rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: #9ca3af; margin: 20px 0 12px; }
+    .tag-checkbox { display: none; }
+    .tag-label {
+        display: inline-block;
+        padding: 3px 10px;
+        border-radius: 20px;
+        font-size: .75rem;
+        cursor: pointer;
+        border: 1px solid #d1d5db;
+        margin: 2px;
+        background: #fff;
+        transition: all .1s;
+        user-select: none;
+    }
+    .tag-checkbox:checked + .tag-label {
+        background: #8B1A2A;
+        color: #fff;
+        border-color: #8B1A2A;
+    }
+    .quill-wrap { border: 1px solid #dee2e6; border-radius: 6px; overflow: hidden; }
+    .quill-wrap .ql-toolbar { border: none; border-bottom: 1px solid #dee2e6; }
+    .quill-wrap .ql-container { border: none; min-height: 160px; font-size: .9rem; }
+</style>
+<link href="https://cdn.jsdelivr.net/npm/quill@2.0.2/dist/quill.snow.css" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css" rel="stylesheet">
+}
+
+<div class="admin-page-header d-flex align-items-center gap-3">
+    <div class="flex-grow-1">
+        <h1 class="admin-page-title">@L("title")</h1>
+        <div class="admin-page-breadcrumb">
+            <a href="/AdminDashboard">@BelarusHeritage.Localization.UiText.T(Context, "admin.nav.dashboard")</a>
+            <span class="sep">/</span>
+            <a href="/AdminObjects">@BelarusHeritage.Localization.UiText.T(Context, "admin.nav.objects")</a>
+            <span class="sep">/</span>
+            <span>@L("title")</span>
+        </div>
+    </div>
+</div>
+
+<form asp-action="Create" method="post" enctype="multipart/form-data" id="objectForm">
+    <!-- Tabs -->
+    <div class="admin-card">
+        <div class="admin-card-header p-0">
+            <ul class="nav tab-nav-admin" id="objTabs">
+                <li class="nav-item"><button type="button" class="nav-link active" data-tab="main">@L("tab.main")</button></li>
+                <li class="nav-item"><button type="button" class="nav-link" data-tab="desc">@L("tab.desc")</button></li>
+                <li class="nav-item"><button type="button" class="nav-link" data-tab="map">@L("tab.map")</button></li>
+                <li class="nav-item"><button type="button" class="nav-link" data-tab="extra">@L("tab.extra")</button></li>
+            </ul>
+        </div>
+
+        <div class="admin-card-body">
+
+            <!-- TAB: Main -->
+            <div class="tab-pane" id="tab-main">
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <label class="form-label">@L("label.nameRu")</label>
+                        <input asp-for="NameRu" class="form-control" placeholder="@BelarusHeritage.Localization.UiText.T(Context, "admin.objects.create.ph.nameRu")" required>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">@L("label.nameBe")</label>
+                        <input asp-for="NameBe" class="form-control" placeholder="@BelarusHeritage.Localization.UiText.T(Context, "admin.objects.create.ph.nameBe")">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">@L("label.nameEn")</label>
+                        <input asp-for="NameEn" class="form-control" placeholder="Mir Castle">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">@L("label.slug")</label>
+                        <input asp-for="Slug" class="form-control" placeholder="mir-castle" id="slugInput">
+                        <div class="form-text" style="font-size:.72rem;">@L("hint.slug")</div>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">@L("label.category")</label>
+                        <select asp-for="CategoryId" class="form-select" required>
+                            <option value="">@L("opt.choose")</option>
+                            @foreach (var c in categories)
+                            {
+                                <option value="@c.Id">@c.NameRu</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">@L("label.region")</label>
+                        <select asp-for="RegionId" class="form-select" required>
+                            <option value="">@L("opt.choose")</option>
+                            @foreach (var r in regions)
+                            {
+                                <option value="@r.Id">@r.NameRu</option>
+                            }
+                        </select>
+                    </div>
+
+                    <div class="col-md-4">
+                        <label class="form-label">@L("label.archStyle")</label>
+                        <select asp-for="ArchStyleId" class="form-select">
+                            <option value="">@L("opt.notSet")</option>
+                            @foreach (var s in archStyles)
+                            {
+                                <option value="@s.Id">@s.NameRu</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label">@L("label.centuryStart")</label>
+                        <input asp-for="CenturyStart" type="number" class="form-control" placeholder="XIII" min="-30" max="21">
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label">@L("label.centuryEnd")</label>
+                        <input asp-for="CenturyEnd" type="number" class="form-control" placeholder="XV" min="-30" max="21">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">@L("label.buildYear")</label>
+                        <input asp-for="BuildYear" type="number" class="form-control" placeholder="1410">
+                    </div>
+
+                    <div class="col-md-3">
+                        <label class="form-label">@L("label.preservation")</label>
+                        <select asp-for="PreservationStatus" class="form-select">
+                            <option value="Preserved">@BelarusHeritage.Localization.UiText.T(Context, "catalog.status.preserved")</option>
+                            <option value="Partial">@BelarusHeritage.Localization.UiText.T(Context, "catalog.status.partial")</option>
+                            <option value="Ruins">@BelarusHeritage.Localization.UiText.T(Context, "catalog.status.ruins")</option>
+                            <option value="Lost">@BelarusHeritage.Localization.UiText.T(Context, "catalog.status.lost")</option>
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label">@L("label.heritageCategory")</label>
+                        <select asp-for="HeritageCategory" class="form-select">
+                            <option value="">—</option>
+                            <option value="1">1</option>
+                            <option value="2">2</option>
+                            <option value="3">3</option>
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label">@L("label.heritageYear")</label>
+                        <input asp-for="HeritageYear" type="number" class="form-control" placeholder="1988">
+                    </div>
+                    <div class="col-md-2 d-flex align-items-end gap-3">
+                        <div class="form-check mb-2">
+                            <input asp-for="IsVisitable" class="form-check-input" type="checkbox">
+                            <label class="form-check-label" style="font-size:.8rem;">@L("label.visitable")</label>
+                        </div>
+                    </div>
+                    <div class="col-md-2 d-flex align-items-end gap-3">
+                        <div class="form-check mb-2">
+                            <input asp-for="IsFeatured" class="form-check-input" type="checkbox">
+                            <label class="form-check-label" style="font-size:.8rem;">@L("label.featured")</label>
+                        </div>
+                    </div>
+
+                    <div class="col-md-4">
+                        <label class="form-label">@L("label.hours")</label>
+                        <input asp-for="VisitingHours" class="form-control" placeholder="@BelarusHeritage.Localization.UiText.T(Context, "admin.objects.create.ph.hours")">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">@L("label.fee")</label>
+                        <input asp-for="EntryFee" class="form-control" placeholder="10 BYN">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">@L("label.publishStatus")</label>
+                        <select asp-for="Status" class="form-select">
+                            <option value="Draft">@BelarusHeritage.Localization.UiText.T(Context, "admin.objects.index.status.draft")</option>
+                            <option value="Published">@BelarusHeritage.Localization.UiText.T(Context, "admin.objects.index.status.published")</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB: Description -->
+            <div class="tab-pane d-none" id="tab-desc">
+                <p class="form-section-title">@L("section.shortDesc")</p>
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <label class="form-label">RU</label>
+                        <textarea asp-for="ShortDescRu" class="form-control" rows="3" maxlength="300"></textarea>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">BE</label>
+                        <textarea asp-for="ShortDescBe" class="form-control" rows="3" maxlength="300"></textarea>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">EN</label>
+                        <textarea asp-for="ShortDescEn" class="form-control" rows="3" maxlength="300"></textarea>
+                    </div>
+                </div>
+
+                <p class="form-section-title">@L("section.fullDesc")</p>
+                <div class="mb-3">
+                    <label class="form-label">@L("label.descRu")</label>
+                    <div class="quill-wrap" id="quill-ru"></div>
+                    <input type="hidden" asp-for="DescriptionRu" id="DescriptionRu">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">@L("label.descEn")</label>
+                    <div class="quill-wrap" id="quill-en"></div>
+                    <input type="hidden" asp-for="DescriptionEn" id="DescriptionEn">
+                </div>
+
+                <p class="form-section-title">@L("section.funFact")</p>
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <label class="form-label">RU</label>
+                        <textarea asp-for="FunFactRu" class="form-control" rows="2" maxlength="500"></textarea>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">BE</label>
+                        <textarea asp-for="FunFactBe" class="form-control" rows="2" maxlength="500"></textarea>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">EN</label>
+                        <textarea asp-for="FunFactEn" class="form-control" rows="2" maxlength="500"></textarea>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB: Map -->
+            <div class="tab-pane d-none" id="tab-map">
+                <div class="row g-3 mb-3">
+                    <div class="col-md-3">
+                        <label class="form-label">@L("label.lat")</label>
+                        <input type="number" step="0.0000001" class="form-control" id="latInput" placeholder="53.9045">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">@L("label.lng")</label>
+                        <input type="number" step="0.0000001" class="form-control" id="lngInput" placeholder="27.5615">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">@L("label.geocode")</label>
+                        <div class="input-group">
+                            <input type="text" class="form-control" id="geocodeInput" placeholder="@BelarusHeritage.Localization.UiText.T(Context, "admin.objects.create.ph.geocode")">
+                            <button type="button" class="btn btn-outline-secondary" onclick="geocode()">
+                                <i class="bi bi-search"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                <div id="mapContainer" style="height:400px; border-radius:8px; overflow:hidden; border:1px solid #dee2e6;"></div>
+                <div class="row g-3 mt-2">
+                    <div class="col-md-4">
+                        <label class="form-label">@L("label.addrRu")</label>
+                        <input type="text" class="form-control" id="addrRu" placeholder="@BelarusHeritage.Localization.UiText.T(Context, "admin.objects.create.ph.addrRu")">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">@L("label.addrBe")</label>
+                        <input type="text" class="form-control" id="addrBe">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">@L("label.addrEn")</label>
+                        <input type="text" class="form-control" id="addrEn">
+                    </div>
+                </div>
+                <div class="form-text mt-1"><i class="bi bi-info-circle me-1"></i>@L("hint.mapClick")</div>
+
+                <!-- Hidden location fields -->
+                <input type="hidden" name="Location.Lat" id="locLat">
+                <input type="hidden" name="Location.Lng" id="locLng">
+                <input type="hidden" name="Location.AddressRu" id="locAddrRu">
+                <input type="hidden" name="Location.AddressBe" id="locAddrBe">
+                <input type="hidden" name="Location.AddressEn" id="locAddrEn">
+            </div>
+
+            <!-- TAB: Extra -->
+            <div class="tab-pane d-none" id="tab-extra">
+                <p class="form-section-title">@L("section.photos")</p>
+                <div class="mb-3">
+                    <label class="form-label">@L("label.uploadImages")</label>
+                    <input type="file" class="form-control" name="imageFiles" id="imageFilesInput"
+                           accept="image/jpeg,image/png,image/webp" multiple>
+                    <div class="form-text">@L("hint.images")</div>
+                </div>
+
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label">@L("label.architect")</label>
+                        <input asp-for="Architect" class="form-control" placeholder="@BelarusHeritage.Localization.UiText.T(Context, "admin.objects.create.ph.architect")">
+                    </div>
+                </div>
+
+                <p class="form-section-title">@L("section.tags")</p>
+                <div>
+                    @foreach (var tag in tags)
+                    {
+                        <input type="checkbox" name="selectedTags" value="@tag.Id"
+                               id="tag_@tag.Id" class="tag-checkbox">
+                        <label for="tag_@tag.Id" class="tag-label"
+                               style="border-color: @(tag.ColorHex ?? "#d1d5db")">@tag.NameRu</label>
+                    }
+                    @if (!tags.Any())
+                    {
+                        <p class="text-muted" style="font-size:.85rem;">@BelarusHeritage.Localization.UiText.T(Context, "admin.objects.create.noTags") <a href="/AdminCatalogData">@BelarusHeritage.Localization.UiText.T(Context, "admin.objects.create.addInCatalog")</a></p>
+                    }
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- Save bar -->
+    <div class="d-flex gap-2 mt-3">
+        <button type="submit" class="btn btn-danger">
+            <i class="bi bi-check2 me-1"></i>@L("btn.create")
+        </button>
+        <a href="/AdminObjects" class="btn btn-outline-secondary">@BelarusHeritage.Localization.UiText.T(Context, "btn.cancel")</a>
+    </div>
+</form>
+
+@section Scripts {
+<script src="https://cdn.jsdelivr.net/npm/quill@2.0.2/dist/quill.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+    // Tabs
+    document.querySelectorAll('[data-tab]').forEach(btn => {
+        btn.addEventListener('click', () => {
+            document.querySelectorAll('[data-tab]').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            document.querySelectorAll('.tab-pane').forEach(p => p.classList.add('d-none'));
+            document.getElementById('tab-' + btn.dataset.tab).classList.remove('d-none');
+            if (btn.dataset.tab === 'map') initMap();
+        });
+    });
+
+    // Auto-slug from name
+    document.querySelector('[name="NameRu"]').addEventListener('input', function() {
+        const slug = document.getElementById('slugInput');
+        if (!slug.dataset.manual) {
+            slug.value = translitToSlug(this.value);
+        }
+    });
+    document.getElementById('slugInput').addEventListener('input', function() {
+        this.dataset.manual = '1';
+    });
+
+    function translitToSlug(text) {
+        const map = {
+            '\u0430':'a','\u0431':'b','\u0432':'v','\u0433':'g','\u0434':'d','\u0435':'e','\u0451':'yo','\u0436':'zh','\u0437':'z','\u0438':'i','\u0439':'y',
+            '\u043a':'k','\u043b':'l','\u043c':'m','\u043d':'n','\u043e':'o','\u043f':'p','\u0440':'r','\u0441':'s','\u0442':'t','\u0443':'u','\u0444':'f','\u0445':'kh',
+            '\u0446':'ts','\u0447':'ch','\u0448':'sh','\u0449':'sch','\u044a':'','\u044b':'y','\u044c':'','\u044d':'e','\u044e':'yu','\u044f':'ya'
+        };
+        return text.toLowerCase()
+            .split('').map(c => map[c] ?? c)
+            .join('').replace(/[^a-z0-9]+/g, '-')
+            .replace(/^-+|-+$/g, '');
+    }
+
+    // Quill editors
+    const quillRu = new Quill('#quill-ru', { theme: 'snow', placeholder: '@L("ph.quillRu")' });
+    const quillEn = new Quill('#quill-en', { theme: 'snow', placeholder: 'Full description in English...' });
+
+    // Sync hidden inputs before submit
+    document.getElementById('objectForm').addEventListener('submit', () => {
+        document.getElementById('DescriptionRu').value = quillRu.root.innerHTML;
+        document.getElementById('DescriptionEn').value = quillEn.root.innerHTML;
+        syncLocationFields();
+    });
+
+    document.getElementById('imageFilesInput')?.addEventListener('change', function() {
+        if (!this.files || this.files.length === 0) return;
+        showToast(`@L("js.filesSelected"): ${this.files.length}`, 'success');
+    });
+
+    // Map
+    let map, marker;
+    function initMap() {
+        if (map) return;
+        map = L.map('mapContainer', { attributionControl: false }).setView([53.7, 27.9], 7);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: ''
+        }).addTo(map);
+        map.on('click', e => setMarker(e.latlng.lat, e.latlng.lng));
+    }
+
+    function setMarker(lat, lng) {
+        if (marker) map.removeLayer(marker);
+        marker = L.marker([lat, lng]).addTo(map);
+        document.getElementById('latInput').value = lat.toFixed(7);
+        document.getElementById('lngInput').value = lng.toFixed(7);
+    }
+
+    document.getElementById('latInput').addEventListener('change', syncFromInputs);
+    document.getElementById('lngInput').addEventListener('change', syncFromInputs);
+    function syncFromInputs() {
+        const lat = parseFloat(document.getElementById('latInput').value);
+        const lng = parseFloat(document.getElementById('lngInput').value);
+        if (!isNaN(lat) && !isNaN(lng) && map) setMarker(lat, lng);
+    }
+
+    async function geocode() {
+        const q = document.getElementById('geocodeInput').value.trim();
+        if (!q) return;
+        const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q)}&limit=1`);
+        const data = await res.json();
+        if (data.length) {
+            const { lat, lon, display_name } = data[0];
+            if (!map) initMap();
+            setMarker(parseFloat(lat), parseFloat(lon));
+            map.setView([lat, lon], 14);
+            document.getElementById('addrRu').value = display_name;
+        } else {
+            showToast('@L("js.placeNotFound")', 'danger');
+        }
+    }
+
+    function syncLocationFields() {
+        document.getElementById('locLat').value = document.getElementById('latInput').value;
+        document.getElementById('locLng').value = document.getElementById('lngInput').value;
+        document.getElementById('locAddrRu').value = document.getElementById('addrRu').value;
+        document.getElementById('locAddrBe').value = document.getElementById('addrBe').value;
+        document.getElementById('locAddrEn').value = document.getElementById('addrEn').value;
+    }
+</script>
+}

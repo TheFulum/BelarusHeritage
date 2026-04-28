@@ -1,0 +1,267 @@
+@model BelarusHeritage.Models.ViewModels.AdminObjectsViewModel
+@{
+    Layout = "_AdminLayout";
+    Func<string, string> L = key => BelarusHeritage.Localization.UiText.T(Context, $"admin.objects.index.{key}");
+    ViewData["Title"] = L("title");
+    var regions = ViewBag.Regions as List<BelarusHeritage.Models.Domain.Region> ?? new();
+    var categories = ViewBag.Categories as List<BelarusHeritage.Models.Domain.Category> ?? new();
+
+    string StatusBadge(BelarusHeritage.Models.Domain.ObjectStatus s) => s switch {
+        BelarusHeritage.Models.Domain.ObjectStatus.Published => "bg-success",
+        BelarusHeritage.Models.Domain.ObjectStatus.Draft     => "bg-warning text-dark",
+        _                                                    => "bg-secondary"
+    };
+    string StatusLabel(BelarusHeritage.Models.Domain.ObjectStatus s) => s switch {
+        BelarusHeritage.Models.Domain.ObjectStatus.Published => L("status.published"),
+        BelarusHeritage.Models.Domain.ObjectStatus.Draft     => L("status.draft"),
+        _                                                    => L("status.archived")
+    };
+}
+
+@section Styles {
+<style>
+    .obj-thumb { width: 48px; height: 36px; object-fit: cover; border-radius: 4px; background: #f0f3f7; }
+    .obj-thumb-placeholder { width: 48px; height: 36px; border-radius: 4px; background: #f0f3f7; display: flex; align-items: center; justify-content: center; color: #adb5bd; font-size: .7rem; }
+</style>
+}
+
+<div class="admin-page-header d-flex align-items-center gap-3">
+    <div class="flex-grow-1">
+        <h1 class="admin-page-title">@L("title")</h1>
+        <div class="admin-page-breadcrumb">
+            <a href="/AdminDashboard">@BelarusHeritage.Localization.UiText.T(Context, "admin.nav.dashboard")</a>
+            <span class="sep">/</span>
+            <span>@L("title")</span>
+        </div>
+    </div>
+    <a href="/AdminObjects/Create" class="btn btn-danger">
+        <i class="bi bi-plus-circle me-1"></i>@L("btn.add")
+    </a>
+</div>
+
+<!-- Filters -->
+<form method="get" class="admin-card mb-3">
+    <div class="admin-card-body py-3">
+        <div class="row g-2 align-items-end">
+            <div class="col-md-3">
+                <input type="text" name="search" class="form-control form-control-sm"
+                       placeholder="@L("search.placeholder")" value="@Model.Search">
+            </div>
+            <div class="col-md-2">
+                <select name="status" class="form-select form-select-sm">
+                    <option value="">@L("filter.allStatuses")</option>
+                    <option value="Draft" selected="@(Model.Status=="Draft"?"selected":null)">@L("status.draft")</option>
+                    <option value="Published" selected="@(Model.Status=="Published"?"selected":null)">@L("status.published")</option>
+                    <option value="Archived" selected="@(Model.Status=="Archived"?"selected":null)">@L("status.archived")</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <select name="regionId" class="form-select form-select-sm">
+                    <option value="">@L("filter.allRegions")</option>
+                    @foreach (var r in regions)
+                    {
+                        <option value="@r.Id" selected="@(Model.RegionId==r.Id?"selected":null)">@r.NameRu</option>
+                    }
+                </select>
+            </div>
+            <div class="col-md-2">
+                <select name="categoryId" class="form-select form-select-sm">
+                    <option value="">@L("filter.allCategories")</option>
+                    @foreach (var c in categories)
+                    {
+                        <option value="@c.Id" selected="@(Model.CategoryId==c.Id?"selected":null)">@c.NameRu</option>
+                    }
+                </select>
+            </div>
+            <div class="col-auto d-flex gap-2">
+                <button type="submit" class="btn btn-sm btn-secondary">@L("btn.apply")</button>
+                <a href="/AdminObjects" class="btn btn-sm btn-outline-secondary">@L("btn.reset")</a>
+            </div>
+        </div>
+    </div>
+</form>
+
+<!-- Mass actions & count -->
+<div class="d-flex align-items-center justify-content-between mb-2">
+    <div class="text-muted" style="font-size:.82rem;">
+        @L("found"): <strong>@Model.TotalCount</strong>
+    </div>
+    <div class="d-flex gap-2" id="massActions" style="display:none!important;">
+        <button class="btn btn-sm btn-outline-success" onclick="massAction('publish')">
+            <i class="bi bi-eye me-1"></i>@L("btn.publish")
+        </button>
+        <button class="btn btn-sm btn-outline-warning" onclick="massAction('unpublish')">
+            <i class="bi bi-eye-slash me-1"></i>@L("btn.toDraft")
+        </button>
+        <button class="btn btn-sm btn-outline-danger" onclick="massAction('delete')">
+            <i class="bi bi-trash3 me-1"></i>@L("btn.delete")
+        </button>
+    </div>
+</div>
+
+<div class="admin-card">
+    <div class="table-responsive">
+        <table class="table admin-table mb-0">
+            <thead>
+                <tr>
+                    <th style="width:36px;">
+                        <input type="checkbox" class="form-check-input" id="selectAll" onchange="toggleAll(this)">
+                    </th>
+                    <th style="width:56px;"></th>
+                    <th>@L("col.name")</th>
+                    <th>@L("col.region")</th>
+                    <th>@L("col.category")</th>
+                    <th>@L("col.status")</th>
+                    <th>@L("col.updated")</th>
+                    <th style="width:100px;"></th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var obj in Model.Objects)
+                {
+                    var mainImg = obj.Images.FirstOrDefault(i => i.IsMain);
+                    <tr>
+                        <td>
+                            <input type="checkbox" class="form-check-input row-check" value="@obj.Id" onchange="updateMassActions()">
+                        </td>
+                        <td>
+                            @if (!string.IsNullOrEmpty(mainImg?.Url))
+                            {
+                                var previewUrl = mainImg.Url;
+                                if (!string.IsNullOrWhiteSpace(previewUrl) &&
+                                    !previewUrl.StartsWith("http://", StringComparison.OrdinalIgnoreCase) &&
+                                    !previewUrl.StartsWith("https://", StringComparison.OrdinalIgnoreCase) &&
+                                    !previewUrl.StartsWith("/", StringComparison.Ordinal))
+                                {
+                                    previewUrl = "/" + previewUrl;
+                                }
+                                <img src="@previewUrl" alt="" class="obj-thumb">
+                            }
+                            else
+                            {
+                                <div class="obj-thumb-placeholder"><i class="bi bi-image"></i></div>
+                            }
+                        </td>
+                        <td>
+                            <div style="font-weight:500; font-size:.875rem;">@obj.NameRu</div>
+                            <div style="font-size:.72rem; color:#9ca3af;">@obj.Slug</div>
+                        </td>
+                        <td style="font-size:.85rem;">@(obj.Region?.NameRu ?? "—")</td>
+                        <td style="font-size:.85rem;">@(obj.Category?.NameRu ?? "—")</td>
+                        <td>
+                            <span class="badge @StatusBadge(obj.Status)" style="font-size:.72rem;">@StatusLabel(obj.Status)</span>
+                        </td>
+                        <td style="font-size:.8rem; color:#6b7280;">@obj.UpdatedAt.ToString("dd.MM.yy")</td>
+                        <td class="text-end">
+                            <a href="/AdminObjects/Edit/@obj.Id" class="btn btn-sm btn-outline-secondary btn-icon me-1" title="@L("btn.edit")">
+                                <i class="bi bi-pencil"></i>
+                            </a>
+                            <a href="/Object/Detail?slug=@obj.Slug" target="_blank" class="btn btn-sm btn-outline-secondary btn-icon me-1" title="@L("btn.view")">
+                                <i class="bi bi-eye"></i>
+                            </a>
+                            <button class="btn btn-sm btn-outline-danger btn-icon" title="@L("btn.delete")"
+                                    onclick="deleteObject(@obj.Id, '@obj.NameRu.Replace("'","\\'")')">
+                                <i class="bi bi-trash3"></i>
+                            </button>
+                        </td>
+                    </tr>
+                }
+                @if (!Model.Objects.Any())
+                {
+                    <tr>
+                        <td colspan="8" class="text-center text-muted py-5">
+                            <i class="bi bi-inbox" style="font-size:2rem; display:block; margin-bottom:8px;"></i>
+                            @L("empty")
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+
+    @if (Model.TotalPages > 1)
+    {
+        <div class="admin-card-body pt-0">
+            <nav>
+                <ul class="pagination pagination-sm justify-content-center mb-0">
+                    @for (int p = 1; p <= Model.TotalPages; p++)
+                    {
+                        var active = p == Model.CurrentPage ? "active" : "";
+                        <li class="page-item @active">
+                            <a class="page-link"
+                               href="@Url.Action("Index", new { page = p, search = Model.Search, status = Model.Status, regionId = Model.RegionId, categoryId = Model.CategoryId })">@p</a>
+                        </li>
+                    }
+                </ul>
+            </nav>
+        </div>
+    }
+</div>
+
+<!-- Confirm delete modal -->
+<div class="modal fade" id="deleteModal" tabindex="-1">
+    <div class="modal-dialog modal-sm">
+        <div class="modal-content">
+            <div class="modal-header border-0 pb-0">
+                <h6 class="modal-title fw-semibold">@L("modal.deleteTitle")</h6>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p class="mb-0" style="font-size:.875rem;">@L("modal.deleteTextStart") «<span id="deleteObjectName"></span>» @L("modal.deleteTextEnd")</p>
+            </div>
+            <div class="modal-footer border-0 pt-0">
+                <button class="btn btn-sm btn-secondary" data-bs-dismiss="modal">@BelarusHeritage.Localization.UiText.T(Context, "btn.cancel")</button>
+                <button class="btn btn-sm btn-danger" id="deleteConfirmBtn">@L("btn.toTrash")</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+const deleteModal = new bootstrap.Modal('#deleteModal');
+let pendingDeleteId = null;
+
+function deleteObject(id, name) {
+    pendingDeleteId = id;
+    document.getElementById('deleteObjectName').textContent = name;
+    deleteModal.show();
+}
+
+document.getElementById('deleteConfirmBtn').addEventListener('click', async () => {
+    if (!pendingDeleteId) return;
+    await fetch('/AdminObjects/Delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(pendingDeleteId)
+    });
+    deleteModal.hide();
+    location.reload();
+});
+
+function toggleAll(cb) {
+    document.querySelectorAll('.row-check').forEach(c => c.checked = cb.checked);
+    updateMassActions();
+}
+
+function updateMassActions() {
+    const checked = document.querySelectorAll('.row-check:checked').length;
+    const panel = document.getElementById('massActions');
+    panel.style.display = checked > 0 ? 'flex' : 'none';
+    panel.style.removeProperty('display');
+    if (checked === 0) panel.style.display = 'none';
+    else panel.style.display = '';
+}
+
+async function massAction(action) {
+    const ids = Array.from(document.querySelectorAll('.row-check:checked')).map(c => parseInt(c.value));
+    if (!ids.length) return;
+    await fetch('/AdminObjects/MassAction', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action, ids })
+    });
+    location.reload();
+}
+</script>
+}

@@ -1,0 +1,138 @@
+{
+    "siteName": "Cultural Heritage of Belarus",
+    "navigation": {
+        "home": "Home",
+        "catalog": "Catalog",
+        "map": "Map",
+        "timeline": "Timeline",
+        "quizzes": "Quizzes",
+        "ornament": "Ornament",
+        "profile": "Profile",
+        "admin": "Admin"
+    },
+    "hero": {
+        "title": "Cultural Heritage of Belarus",
+        "subtitle": "Explore ancient castles, churches, estates and unique architectural monuments of our country"
+    },
+    "stats": {
+        "objects": "Objects",
+        "regions": "Regions",
+        "photos": "Photos",
+        "users": "Users"
+    },
+    "catalog": {
+        "title": "Object Catalog",
+        "filters": "Filters",
+        "sortBy": "Sort by",
+        "sortName": "By name",
+        "sortRating": "By rating",
+        "sortDate": "By date",
+        "sortCentury": "By century",
+        "resetFilters": "Reset filters",
+        "noResults": "No objects found",
+        "found": "Found",
+        "objects": "objects"
+    },
+    "object": {
+        "details": "Details",
+        "rating": "Rating",
+        "reviews": "reviews",
+        "addToFavorites": "Add to favorites",
+        "removeFromFavorites": "Remove from favorites",
+        "addToRoute": "Add to route",
+        "showOnMap": "Show on map",
+        "reportError": "Report an error",
+        "relatedObjects": "Related objects",
+        "nearbyObjects": "Nearby objects",
+        "comments": "Comments",
+        "addComment": "Add comment",
+        "commentSuccess": "Comment submitted for moderation"
+    },
+    "map": {
+        "title": "Interactive Map",
+        "allObjects": "All objects",
+        "onlyVisitable": "Only visitable",
+        "myLocation": "My location",
+        "cluster": "Objects in cluster"
+    },
+    "timeline": {
+        "title": "Timeline",
+        "subtitle": "Key events in Belarusian history",
+        "todayInHistory": "Today in History"
+    },
+    "quiz": {
+        "title": "Quizzes",
+        "play": "Play",
+        "result": "Result",
+        "correct": "Correct",
+        "attempts": " attempts",
+        "playAgain": "Play again",
+        "types": {
+            "imageGuess": "Guess the object",
+            "regionGuess": "Guess the region",
+            "dragDrop": "Assemble",
+            "centuryGuess": "Guess the century",
+            "oddOneOut": "Find the odd one"
+        }
+    },
+    "routeBuilder": {
+        "title": "Route Builder",
+        "createRoute": "Create route",
+        "addStop": "Add stop",
+        "removeStop": "Remove",
+        "totalDistance": "Total distance",
+        "km": "km"
+    },
+    "ornament": {
+        "title": "Ornament Builder",
+        "pieces": "Pieces",
+        "brush": "Brush",
+        "clear": "Clear",
+        "undo": "Undo",
+        "save": "Save",
+        "download": "Download PNG"
+    },
+    "auth": {
+        "login": "Login",
+        "logout": "Logout",
+        "register": "Register",
+        "email": "Email",
+        "password": "Password",
+        "rememberMe": "Remember me",
+        "forgotPassword": "Forgot password?",
+        "noAccount": "No account?",
+        "hasAccount": "Already have an account?"
+    },
+    "profile": {
+        "title": "Profile",
+        "favorites": "Favorites",
+        "comments": "My comments",
+        "ratings": "My ratings",
+        "routes": "My routes",
+        "ornaments": "My ornaments",
+        "quizHistory": "Quiz history"
+    },
+    "admin": {
+        "dashboard": "Dashboard",
+        "objects": "Objects",
+        "trash": "Trash",
+        "users": "Users",
+        "comments": "Comments",
+        "quizzes": "Quizzes",
+        "timeline": "Timeline",
+        "catalogData": "Reference Data",
+        "auditLog": "Audit Log"
+    },
+    "common": {
+        "save": "Save",
+        "cancel": "Cancel",
+        "delete": "Delete",
+        "edit": "Edit",
+        "create": "Create",
+        "search": "Search",
+        "loading": "Loading...",
+        "error": "Error",
+        "success": "Success",
+        "confirm": "Confirm"
+    }
+}

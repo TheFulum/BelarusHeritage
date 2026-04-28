@@ -1,0 +1,50 @@
+# Build output
+bin/
+obj/
+[Bb]uild/
+[Dd]ebug/
+[Rr]elease/
+x64/
+x86/
+
+# IDE/editor
+.vs/
+.vscode/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# Rider/JetBrains
+.idea/
+*.sln.iml
+
+# Logs and temp
+*.log
+logs/
+tmp/
+temp/
+*.tmp
+
+# Test/build artifacts
+TestResults/
+artifacts/
+artifacts_build/
+publish/
+
+# NuGet
+*.nupkg
+packages/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Local config/secrets
+appsettings.Development.local.json
+appsettings.Local.json
+.env
+.env.*
+
+# Optional upload/runtime data (uncomment if needed)
+# wwwroot/uploads/
