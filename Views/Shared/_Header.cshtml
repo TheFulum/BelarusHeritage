@@ -23,7 +23,7 @@
                         </a>
                         <ul class="dropdown-menu dropdown-menu-end">
                             <li><a class="dropdown-item" href="@Url.Action("Index", "Profile")">@UiText.T(Context, "auth.profile")</a></li>
-                            @if (User.IsInRole("admin") || User.IsInRole("moderator"))
+                            @if (User.IsInRole("admin"))
                             {
                                 <li><a class="dropdown-item" href="@Url.Action("Index", "AdminDashboard")"><i class="bi bi-speedometer2 me-2"></i>@UiText.T(Context, "auth.adminPanel")</a></li>
                             }
@@ -57,7 +57,7 @@
                     <path fill="white" d="M50 20 L70 35 L70 60 L50 75 L30 60 L30 35 Z"/>
                 </svg>
                 <span class="brand-text">
-                    <span class="brand-title">@UiText.T(Context, "site.name")</span>
+                    <span class="brand-title">@UiText.T(Context, "site.brandTitle")</span>
                     <span class="brand-subtitle">@UiText.T(Context, "site.subtitle")</span>
                 </span>
             </a>
@@ -96,7 +96,7 @@
                 <!-- Search -->
                 <form class="search-form" action="@Url.RouteUrl("SearchPretty")" method="get">
                     <div class="input-group">
-                        <input type="text" name="q" class="form-control" placeholder="@UiText.T(Context, "search.placeholder")">
+                        <input type="text" name="q" class="form-control" placeholder="@UiText.T(Context, "search.placeholder")" autocomplete="off" spellcheck="false">
                         <button class="btn btn-outline-secondary" type="submit">
                             <i class="bi bi-search"></i>
                         </button>

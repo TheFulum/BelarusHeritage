@@ -62,7 +62,7 @@ public class SearchController : Controller
         return View(objects);
     }
 
-    [HttpGet]
+    [HttpGet("/search/autocomplete")]
     public async Task<IActionResult> Autocomplete(string q)
     {
         var lang = Request.Cookies["culture"] ?? "ru";

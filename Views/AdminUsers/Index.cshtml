@@ -27,7 +27,6 @@
                 <select name="role" class="form-select form-select-sm">
                     <option value="">@L("allRoles")</option>
                     <option value="user" selected="@(Model.Role=="user"?"selected":null)">user</option>
-                    <option value="moderator" selected="@(Model.Role=="moderator"?"selected":null)">moderator</option>
                     <option value="admin" selected="@(Model.Role=="admin"?"selected":null)">admin</option>
                 </select>
             </div>
@@ -129,8 +128,7 @@
 
 @functions {
     string RoleBadge(string? role) => role switch {
-        "admin"     => "bg-danger",
-        "moderator" => "bg-info text-dark",
-        _           => "bg-light text-dark border"
+        "admin" => "bg-danger",
+        _       => "bg-light text-dark border"
     };
 }

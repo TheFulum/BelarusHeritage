@@ -10,6 +10,14 @@ using System.Text;
 
 namespace BelarusHeritage.Services;
 
+public enum LoginStatus
+{
+    Success,
+    InvalidCredentials,
+    LockedOut,
+    AccountDisabled
+}
+
 public class AuthService
 {
     private readonly UserManager<User> _userManager;
@@ -32,10 +40,10 @@ public class AuthService
     public async Task<(User? User, string[] Errors)> RegisterAsync(string email, string username, string password)
     {
         if (await _userManager.FindByEmailAsync(email) != null)
-            return (null, new[] { "Email already exists" });
+            return (null, new[] { "email_exists" });
 
         if (await _userManager.FindByNameAsync(username) != null)
-            return (null, new[] { "Username already exists" });
+            return (null, new[] { "username_exists" });
 
         var user = new User
         {
@@ -43,37 +51,40 @@ public class AuthService
             UserName = username,
             DisplayName = username,
             PreferredLang = "ru",
-            Role = "user"
+            Role = "user",
+            EmailConfirmed = true
         };
 
         var result = await _userManager.CreateAsync(user, password);
         if (!result.Succeeded)
-            return (null, result.Errors.Select(e => e.Description).ToArray());
+            return (null, new[] { "register_failed" });
 
         await _userManager.AddToRoleAsync(user, "user");
-        await GenerateEmailVerificationTokenAsync(user);
 
         return (user, Array.Empty<string>());
     }
 
-    public async Task<string?> LoginAsync(string email, string password, bool rememberMe = false)
+    public async Task<(LoginStatus Status, string? Token)> LoginAsync(string email, string password, bool rememberMe = false)
     {
         var user = await _userManager.FindByEmailAsync(email);
-        if (user == null || !user.IsActive)
-            return null;
+        if (user == null)
+            return (LoginStatus.InvalidCredentials, null);
+
+        if (!user.IsActive)
+            return (LoginStatus.AccountDisabled, null);
 
         var result = await _signInManager.CheckPasswordSignInAsync(user, password, lockoutOnFailure: true);
         if (result.IsLockedOut)
-            return null;
+            return (LoginStatus.LockedOut, null);
 
         if (!result.Succeeded)
-            return null;
+            return (LoginStatus.InvalidCredentials, null);
 
         // Update last login
         user.LastLoginAt = DateTime.UtcNow;
         await _userManager.UpdateAsync(user);
 
-        return GenerateJwtToken(user);
+        return (LoginStatus.Success, GenerateJwtToken(user));
     }
 
     public async Task GenerateEmailVerificationTokenAsync(User user)

@@ -438,16 +438,19 @@
 
                 <!-- ── Actions ── -->
                 <div class="sidebar-block sidebar-actions">
-                    <button type="button" class="sidebar-action-btn @(Model.IsFavorite ? "active" : "")"
-                            id="btnDetailFavorite" data-object-id="@obj.Id" data-auth="@(isAuth ? "1" : "0")">
-                        <i class="bi @(Model.IsFavorite ? "bi-heart-fill" : "bi-heart")"></i>
-                        <span class="action-label">@Localize(Model.IsFavorite ? "action.unfavorite" : "action.favorite")</span>
-                    </button>
+                    @if (isAuth)
+                    {
+                        <button type="button" class="sidebar-action-btn @(Model.IsFavorite ? "active" : "")"
+                                id="btnDetailFavorite" data-object-id="@obj.Id" data-auth="1">
+                            <i class="bi @(Model.IsFavorite ? "bi-heart-fill" : "bi-heart")"></i>
+                            <span class="action-label">@Localize(Model.IsFavorite ? "action.unfavorite" : "action.favorite")</span>
+                        </button>
 
-                    <button type="button" class="sidebar-action-btn" id="btnQuickAddToRoute" data-object-id="@obj.Id" data-auth="@(isAuth ? "1" : "0")">
-                        <i class="bi bi-signpost-split"></i>
-                        <span class="action-label">@Localize("action.addRoute")</span>
-                    </button>
+                        <button type="button" class="sidebar-action-btn" id="btnQuickAddToRoute" data-object-id="@obj.Id" data-auth="1">
+                            <i class="bi bi-signpost-split"></i>
+                            <span class="action-label">@Localize("action.addRoute")</span>
+                        </button>
+                    }
 
                     <button type="button" class="sidebar-action-btn"
                             id="btnReportError" data-bs-toggle="modal" data-bs-target="#reportErrorModal">
@@ -555,7 +558,7 @@
         async function quickAddToRoute(objectId) {
             const isAuthenticated = document.body.dataset.authenticated === 'true';
             if (!isAuthenticated) {
-                window.showToast?.('@Localize("js.error")', 'warning');
+                window.showToast?.('@Localize("toast.needAuth")', 'warning');
                 return;
             }
             const modalEl = document.getElementById('routePickerModal');

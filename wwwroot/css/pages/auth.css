@@ -85,6 +85,39 @@
     color: var(--color-text-secondary);
 }
 
+.auth-alert {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 12px 14px;
+    border-radius: var(--radius-md);
+    font-size: .92rem;
+    line-height: 1.45;
+    margin-bottom: var(--space-lg);
+}
+
+.auth-alert i {
+    flex-shrink: 0;
+    font-size: 1.1rem;
+    margin-top: 1px;
+}
+
+.auth-alert-success {
+    background: rgba(59, 94, 63, 0.08);
+    border: 1px solid rgba(59, 94, 63, 0.22);
+    color: #2f4d33;
+}
+
+.auth-alert-danger {
+    background: rgba(139, 26, 42, 0.07);
+    border: 1px solid rgba(139, 26, 42, 0.18);
+    color: #6d1420;
+}
+
+.auth-alert-messages > div + div {
+    margin-top: 4px;
+}
+
 @media (max-width: 575.98px) {
     .auth-card {
         padding: var(--space-xl) var(--space-lg);

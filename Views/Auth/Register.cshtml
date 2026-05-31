@@ -16,14 +16,10 @@
                         <p class="auth-subtitle">@Localize("subtitle")</p>
                     </div>
 
+                    <partial name="_AuthAlerts" />
+
                     <form asp-action="Register" method="post" class="auth-form">
                         @Html.AntiForgeryToken()
-                        @if (!ViewData.ModelState.IsValid)
-                        {
-                            <div class="alert alert-danger">
-                                <div asp-validation-summary="All"></div>
-                            </div>
-                        }
 
                         <div class="form-floating mb-3">
                             <input type="email" class="form-control" id="email" name="email"

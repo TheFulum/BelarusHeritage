@@ -19,10 +19,9 @@ public class RouteBuilderController : Controller
         _context = context;
     }
 
-    public IActionResult Index(int? routeId, int? addObject)
+    public IActionResult Index(int? routeId)
     {
         ViewBag.RouteId = routeId.HasValue && routeId.Value > 0 ? routeId : null;
-        ViewBag.AddObjectId = addObject.HasValue && addObject.Value > 0 ? addObject : null;
         return View();
     }
 

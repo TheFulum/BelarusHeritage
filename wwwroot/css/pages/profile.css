@@ -144,11 +144,6 @@
     color: var(--color-accent);
 }
 
-.profile-role-badge.role-moderator {
-    background: rgba(59, 94, 63, 0.12);
-    color: var(--color-secondary);
-}
-
 .profile-meta {
     color: var(--color-text-secondary);
     font-size: 0.78rem;

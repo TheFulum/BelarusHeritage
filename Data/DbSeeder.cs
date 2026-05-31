@@ -12,7 +12,6 @@ public static class DbSeeder
     private static readonly string[] Roles =
     {
         "user",
-        "moderator",
         "admin"
     };
 
@@ -32,6 +31,7 @@ public static class DbSeeder
         await EnsureRoutePrivacyColumnsAsync(db);
         await SeedRolesAsync(roleManager);
         await MigrateLegacyRolesAsync(userManager, roleManager, db);
+        await EnsureEmailConfirmedAsync(db);
         var admin = await SeedAdminAsync(userManager);
         await SeedHeritageObjectsAsync(db, admin.Id, env.WebRootPath);
         await SeedTimelineEventsAsync(db);
@@ -40,18 +40,17 @@ public static class DbSeeder
     }
 
     /// <summary>
-    /// Migrates from the older 5-role layout (superadmin / admin / moderator / editor / user)
-    /// to the current 3-role layout (admin / moderator / user). Idempotent.
+    /// Migrates legacy roles to the current 2-role layout (admin / user). Idempotent.
     /// </summary>
     private static async Task MigrateLegacyRolesAsync(
         UserManager<User> userManager,
         RoleManager<UserRole> roleManager,
         AppDbContext db)
     {
-        // (oldRole, newRole) pairs
         var roleMigrations = new[]
         {
             ("superadmin", "admin"),
+            ("moderator",  "admin"),
             ("editor",     "user")
         };
 
@@ -83,11 +82,11 @@ public static class DbSeeder
 
         // Backstop: any user whose User.Role string still references a removed role
         var stragglers = await db.Users
-            .Where(u => u.Role == "superadmin" || u.Role == "editor")
+            .Where(u => u.Role == "superadmin" || u.Role == "editor" || u.Role == "moderator")
             .ToListAsync();
         foreach (var u in stragglers)
         {
-            u.Role = u.Role == "superadmin" ? "admin" : "user";
+            u.Role = u.Role is "superadmin" or "moderator" ? "admin" : "user";
         }
         if (stragglers.Count > 0)
             await db.SaveChangesAsync();
@@ -158,6 +157,13 @@ WHERE TABLE_SCHEMA = DATABASE()
         await EnsureColumnAsync("routes", "source_route_id", "ALTER TABLE routes ADD COLUMN source_route_id INT NULL");
         await EnsureColumnAsync("routes", "source_route_title", "ALTER TABLE routes ADD COLUMN source_route_title VARCHAR(255) NULL");
         await EnsureColumnAsync("routes", "source_route_share_token", "ALTER TABLE routes ADD COLUMN source_route_share_token VARCHAR(32) NULL");
+    }
+
+    private static async Task EnsureEmailConfirmedAsync(AppDbContext db)
+    {
+        await db.Users
+            .Where(u => !u.EmailConfirmed)
+            .ExecuteUpdateAsync(s => s.SetProperty(u => u.EmailConfirmed, true));
     }
 
     private static async Task<User> SeedAdminAsync(UserManager<User> userManager)

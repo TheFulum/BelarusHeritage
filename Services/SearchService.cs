@@ -51,7 +51,7 @@ public class SearchService
             .Where(o => lang == "ru" ?
                 o.NameRu!.ToLower().Contains(query) || o.NameBe!.ToLower().Contains(query) :
                 o.NameEn!.ToLower().Contains(query))
-            .Take(5)
+            .Take(7)
             .ToListAsync();
 
         return objects.Select(o => new AutocompleteResult
@@ -60,7 +60,8 @@ public class SearchService
             Slug = o.Slug,
             Name = lang == "ru" ? o.NameRu : lang == "be" ? o.NameBe : o.NameEn,
             Category = o.Category != null ? (lang == "ru" ? o.Category.NameRu : lang == "be" ? o.Category.NameBe : o.Category.NameEn) : null,
-            IconClass = o.Category?.IconClass
+            IconClass = o.Category?.IconClass,
+            ColorHex = o.Category?.ColorHex
         }).ToList();
     }
 
@@ -142,6 +143,7 @@ public class AutocompleteResult
     public string Name { get; set; } = string.Empty;
     public string? Category { get; set; }
     public string? IconClass { get; set; }
+    public string? ColorHex { get; set; }
 }
 
 // Extension for MySQL full-text search in EF Core
