@@ -1,0 +1,38 @@
+@if (TempData["SuccessMessage"] is string successMessage)
+{
+    <div class="auth-alert auth-alert-success" role="alert">
+        <i class="bi bi-check-circle-fill" aria-hidden="true"></i>
+        <span>@successMessage</span>
+    </div>
+}
+
+@if (TempData["ErrorMessage"] is string errorMessage)
+{
+    <div class="auth-alert auth-alert-danger" role="alert">
+        <i class="bi bi-exclamation-circle-fill" aria-hidden="true"></i>
+        <span>@errorMessage</span>
+    </div>
+}
+
+@if (!ViewData.ModelState.IsValid)
+{
+    var errors = ViewData.ModelState.Values
+        .SelectMany(v => v.Errors)
+        .Select(e => e.ErrorMessage)
+        .Where(m => !string.IsNullOrWhiteSpace(m))
+        .Distinct()
+        .ToList();
+
+    if (errors.Count > 0)
+    {
+        <div class="auth-alert auth-alert-danger" role="alert">
+            <i class="bi bi-exclamation-circle-fill" aria-hidden="true"></i>
+            <div class="auth-alert-messages">
+                @foreach (var message in errors)
+                {
+                    <div>@message</div>
+                }
+            </div>
+        </div>
+    }
+}

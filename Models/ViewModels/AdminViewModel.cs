@@ -54,6 +54,13 @@ public class AdminUsersViewModel
     public string? Search { get; set; }
 }
 
+public class AdminUserDetailsViewModel : ProfileViewModel
+{
+    public bool IsCurrentUser { get; set; }
+
+    public static readonly string[] AvailableRoles = ["user", "admin"];
+}
+
 public class AdminCommentsViewModel
 {
     public List<Comment> Comments { get; set; } = new();

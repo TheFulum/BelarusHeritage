@@ -8,7 +8,6 @@
     var roleClass = user.Role?.ToLowerInvariant() switch
     {
         "admin" => "role-admin",
-        "moderator" => "role-moderator",
         _ => ""
     };
     var registeredAt = user.CreatedAt.ToLocalTime().ToString("d MMMM yyyy",

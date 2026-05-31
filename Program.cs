@@ -87,8 +87,7 @@ builder.Services.AddAuthentication(options =>
 
 builder.Services.AddAuthorization(options =>
 {
-    options.AddPolicy("Admin", policy => policy.RequireRole("admin", "moderator"));
-    options.AddPolicy("Moderator", policy => policy.RequireRole("moderator"));
+    options.AddPolicy("Admin", policy => policy.RequireRole("admin"));
 });
 
 builder.Services.AddMemoryCache();

@@ -17,23 +17,10 @@
                         <p class="auth-subtitle">@Localize("subtitle")</p>
                     </div>
 
-                    @if (TempData["SuccessMessage"] != null)
-                    {
-                        <div class="alert alert-success">@TempData["SuccessMessage"]</div>
-                    }
-                    @if (TempData["ErrorMessage"] != null)
-                    {
-                        <div class="alert alert-danger">@TempData["ErrorMessage"]</div>
-                    }
+                    <partial name="_AuthAlerts" />
 
                     <form asp-action="Login" method="post" class="auth-form">
                         @Html.AntiForgeryToken()
-                        @if (!ViewData.ModelState.IsValid)
-                        {
-                            <div class="alert alert-danger">
-                                <div asp-validation-summary="All"></div>
-                            </div>
-                        }
 
                         <input type="hidden" name="returnUrl" value="@returnUrl" />
 

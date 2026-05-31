@@ -9,6 +9,7 @@
     var isFavorite = ViewBag.IsFavorite == true || (favoriteIds?.Contains(Model.Id) == true);
     var mainImage = Model.Images?.FirstOrDefault(i => i.IsMain);
     var imageUrl = NormalizeImageUrl(mainImage?.ThumbUrl ?? mainImage?.Url ?? Model.MainImageUrl);
+    var isAuth = User.Identity?.IsAuthenticated == true;
 }
 
 <div class="object-card">
@@ -71,18 +72,16 @@
         </div>
     </a>
 
-    <div class="object-card-actions">
-        <a class="btn-add-route"
-           href="@Url.Action("Index", "RouteBuilder", new { addObject = Model.Id })"
-           title="@BelarusHeritage.Localization.UiText.T(Context, "object.card.addToRoute")">
-            <i class="bi bi-signpost-split"></i>
-        </a>
-        <button class="btn-favorite @(isFavorite ? "active" : "")"
-                onclick="toggleFavorite(@Model.Id, event)"
-                title="@BelarusHeritage.Localization.UiText.T(Context, "object.card.addToFavorites")">
-            <i class="bi bi-heart"></i>
-        </button>
-    </div>
+    @if (isAuth)
+    {
+        <div class="object-card-actions">
+            <button class="btn-favorite @(isFavorite ? "active" : "")"
+                    onclick="toggleFavorite(@Model.Id, event)"
+                    title="@BelarusHeritage.Localization.UiText.T(Context, "object.card.addToFavorites")">
+                <i class="bi bi-heart"></i>
+            </button>
+        </div>
+    }
 </div>
 
 @functions {

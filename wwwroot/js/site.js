@@ -335,6 +335,8 @@ function initFavoriteToggle() {
 /**
  * Search autocomplete
  */
+const AUTOCOMPLETE_MAX = 7;
+
 function initSearchAutocomplete() {
     const searchInputs = document.querySelectorAll('input[name="q"]');
 
@@ -349,7 +351,13 @@ function initSearchAutocomplete() {
 
             timeout = setTimeout(async () => {
                 try {
-                    const response = await fetch(`/Search/Autocomplete?q=${encodeURIComponent(query)}`);
+                    const response = await fetch(`/search/autocomplete?q=${encodeURIComponent(query)}`, {
+                        headers: { Accept: 'application/json' },
+                        credentials: 'same-origin'
+                    });
+                    if (!response.ok) return;
+                    const contentType = response.headers.get('content-type') || '';
+                    if (!contentType.includes('application/json')) return;
                     const results = await response.json();
                     displayAutocompleteResults(input, results);
                 } catch (error) {
@@ -359,61 +367,66 @@ function initSearchAutocomplete() {
         });
 
         input.addEventListener('blur', () => {
-            setTimeout(() => {
-                hideAutocomplete();
-            }, 200);
+            setTimeout(() => hideAutocomplete(), 200);
+        });
+
+        input.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') hideAutocomplete();
         });
     });
+}
+
+function getAutocompleteWrapper(input) {
+    return input.closest('.search-form')
+        || input.closest('.search-form-wrap')
+        || input.parentElement;
+}
+
+function escapeHtml(text) {
+    return String(text ?? '').replace(/[&<>"']/g, (c) => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+    }[c]));
 }
 
 function displayAutocompleteResults(input, results) {
     hideAutocomplete();
 
-    if (!results.length) return;
+    const wrapper = getAutocompleteWrapper(input);
+    if (!wrapper) return;
 
     const container = document.createElement('div');
     container.className = 'autocomplete-dropdown';
-    container.style.cssText = `
-        position: absolute;
-        top: 100%;
-        left: 0;
-        right: 0;
-        background: white;
-        border: 1px solid #E0D8CC;
-        border-radius: 8px;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-        z-index: 1000;
-        max-height: 300px;
-        overflow-y: auto;
-    `;
+    container.setAttribute('role', 'listbox');
 
-    results.forEach(result => {
+    const items = (results || []).slice(0, AUTOCOMPLETE_MAX);
+
+    if (!items.length) return;
+
+    items.forEach(result => {
         const item = document.createElement('a');
-        item.href = `/Object/Detail?slug=${result.slug}`;
+        item.href = `/Object/Detail?slug=${encodeURIComponent(result.slug)}`;
         item.className = 'autocomplete-item';
-        item.style.cssText = `
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            padding: 10px 16px;
-            color: inherit;
-            text-decoration: none;
-            border-bottom: 1px solid #E0D8CC;
-        `;
+        item.setAttribute('role', 'option');
+        item.addEventListener('mousedown', (e) => e.preventDefault());
+
+        const color = result.colorHex || getCategoryColor(result.iconClass);
+        const iconClass = result.iconClass || 'bi bi-building';
+
         item.innerHTML = `
-            <span class="category-icon" style="background: ${getCategoryColor(result.iconClass)}; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white;">
-                <i class="${result.iconClass || 'bi bi-building'}"></i>
+            <span class="autocomplete-item-icon" style="background:${escapeHtml(color)}">
+                <i class="${escapeHtml(iconClass)}"></i>
             </span>
-            <div>
-                <div style="font-weight: 500;">${result.name}</div>
-                <div style="font-size: 0.85rem; color: #6B6B6B;">${result.category || ''}</div>
-            </div>
+            <span class="autocomplete-item-body">
+                <span class="autocomplete-item-name">${escapeHtml(result.name)}</span>
+                ${result.category ? `<span class="autocomplete-item-category">${escapeHtml(result.category)}</span>` : ''}
+            </span>
+            <i class="bi bi-chevron-right autocomplete-item-arrow" aria-hidden="true"></i>
         `;
         container.appendChild(item);
     });
 
-    input.parentElement.style.position = 'relative';
-    input.parentElement.appendChild(container);
+    wrapper.style.position = 'relative';
+    wrapper.appendChild(container);
 }
 
 function hideAutocomplete() {

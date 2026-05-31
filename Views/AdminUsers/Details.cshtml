@@ -1,0 +1,281 @@
+@model BelarusHeritage.Models.ViewModels.AdminUserDetailsViewModel
+@{
+    Layout = "_AdminLayout";
+    Func<string, string> L = key => BelarusHeritage.Localization.UiText.T(Context, $"admin.users.details.{key}");
+    Func<string, string> Lm = key => BelarusHeritage.Localization.UiText.T(Context, $"admin.users.manage.{key}");
+    Func<string, string> Li = key => BelarusHeritage.Localization.UiText.T(Context, $"admin.users.index.{key}");
+    var lang = BelarusHeritage.Localization.UiText.Lang(Context);
+    var user = Model.User;
+    var displayName = !string.IsNullOrWhiteSpace(user.DisplayName) ? user.DisplayName! : user.UserName ?? user.Email ?? "User";
+    ViewData["Title"] = displayName;
+}
+
+<div class="admin-page-header d-flex flex-wrap justify-content-between align-items-start gap-2">
+    <div>
+        <h1 class="admin-page-title">@displayName</h1>
+        <div class="admin-page-breadcrumb">
+            <a href="/AdminDashboard">@BelarusHeritage.Localization.UiText.T(Context, "admin.nav.dashboard")</a>
+            <span class="sep">/</span>
+            <a href="/AdminUsers">@BelarusHeritage.Localization.UiText.T(Context, "admin.nav.users")</a>
+            <span class="sep">/</span>
+            <span>@displayName</span>
+        </div>
+    </div>
+    <a href="/AdminUsers" class="btn btn-sm btn-outline-secondary">
+        <i class="bi bi-arrow-left me-1"></i>@L("back")
+    </a>
+</div>
+
+@if (TempData["SuccessMessage"] is string successMessage)
+{
+    <div class="alert alert-success py-2 mb-3" role="alert">
+        <i class="bi bi-check-circle me-2"></i>@successMessage
+    </div>
+}
+@if (TempData["ErrorMessage"] is string errorMessage)
+{
+    <div class="alert alert-danger py-2 mb-3" role="alert">
+        <i class="bi bi-exclamation-circle me-2"></i>@errorMessage
+    </div>
+}
+
+<div class="row g-3 mb-3">
+    <div class="col-lg-4">
+        <div class="admin-card">
+            <div class="admin-card-body">
+                <div class="d-flex align-items-center gap-3 mb-3">
+                    @if (!string.IsNullOrEmpty(user.AvatarUrl))
+                    {
+                        <img src="@user.AvatarUrl" alt="@displayName" style="width:64px;height:64px;border-radius:50%;object-fit:cover;">
+                    }
+                    else
+                    {
+                        <div style="width:64px;height:64px;border-radius:50%;background:#8B1A2A;display:flex;align-items:center;justify-content:center;color:#fff;font-size:1.25rem;font-weight:600;">
+                            @(displayName.FirstOrDefault())
+                        </div>
+                    }
+                    <div>
+                        <div style="font-weight:600;font-size:1rem;">@displayName</div>
+                        <div class="text-muted" style="font-size:.85rem;">@user.Email</div>
+                    </div>
+                </div>
+                <dl class="row mb-0" style="font-size:.875rem;">
+                    <dt class="col-5 text-muted">@Li("col.role")</dt>
+                    <dd class="col-7"><span class="badge bg-light text-dark border">@(user.Role ?? "user")</span></dd>
+                    <dt class="col-5 text-muted">@Li("col.status")</dt>
+                    <dd class="col-7">
+                        @if (user.IsActive)
+                        {
+                            <span class="badge bg-success">@Li("active")</span>
+                        }
+                        else
+                        {
+                            <span class="badge bg-secondary">@Li("blocked")</span>
+                        }
+                    </dd>
+                    <dt class="col-5 text-muted">@Li("col.registered")</dt>
+                    <dd class="col-7">@user.CreatedAt.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</dd>
+                    @if (user.LastLoginAt.HasValue)
+                    {
+                        <dt class="col-5 text-muted">@L("lastLogin")</dt>
+                        <dd class="col-7">@user.LastLoginAt.Value.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</dd>
+                    }
+                </dl>
+
+                <hr class="my-3">
+
+                <h2 class="h6 mb-3">@Lm("title")</h2>
+
+                <form asp-action="ChangeEmail" method="post" class="mb-3">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="id" value="@user.Id" />
+                    <label class="form-label mb-1" style="font-size:.85rem;">@Lm("email")</label>
+                    <input type="email" name="email" class="form-control form-control-sm mb-2" value="@user.Email" required maxlength="256">
+                    <button type="submit" class="btn btn-sm btn-secondary w-100">@Lm("changeEmail")</button>
+                </form>
+
+                <form asp-action="ChangeRole" method="post">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="id" value="@user.Id" />
+                    <label class="form-label mb-1" style="font-size:.85rem;">@Lm("role")</label>
+                    @if (Model.IsCurrentUser)
+                    {
+                        <select class="form-select form-select-sm mb-2" disabled>
+                            @foreach (var r in AdminUserDetailsViewModel.AvailableRoles)
+                            {
+                                <option value="@r" selected="@(user.Role == r ? "selected" : null)">@r</option>
+                            }
+                        </select>
+                        <div class="text-muted" style="font-size:.78rem;">@Lm("selfRoleNote")</div>
+                    }
+                    else
+                    {
+                        <select name="role" class="form-select form-select-sm mb-2" required>
+                            @foreach (var r in AdminUserDetailsViewModel.AvailableRoles)
+                            {
+                                <option value="@r" selected="@(user.Role == r ? "selected" : null)">@r</option>
+                            }
+                        </select>
+                        <button type="submit" class="btn btn-sm btn-secondary w-100">@Lm("changeRole")</button>
+                        <div class="text-muted mt-2" style="font-size:.78rem;">@Lm("roleHint")</div>
+                    }
+                </form>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-8">
+        <div class="admin-card">
+            <div class="admin-card-body">
+                <h2 class="h6 mb-3">@L("activity")</h2>
+                <div class="row g-2 text-center">
+                    @{
+                        var stats = new (string Label, int Count)[]
+                        {
+                            (L("favorites"), Model.Favorites.Count),
+                            (L("comments"), Model.Comments.Count),
+                            (L("ratings"), Model.Ratings.Count),
+                            (L("routes"), Model.Routes.Count),
+                            (L("ornaments"), Model.Ornaments.Count),
+                            (L("quizzes"), Model.QuizResults.Count)
+                        };
+                    }
+                    @foreach (var s in stats)
+                    {
+                        <div class="col-4 col-md-2">
+                            <div class="border rounded p-2">
+                                <div style="font-size:1.25rem;font-weight:700;">@s.Count</div>
+                                <div class="text-muted" style="font-size:.72rem;">@s.Label</div>
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@{
+    string ObjName(BelarusHeritage.Models.Domain.HeritageObject o) =>
+        lang == "en" ? o.NameEn : lang == "be" ? o.NameBe : o.NameRu;
+}
+
+<div class="admin-card mb-3">
+    <div class="admin-card-body">
+        <h2 class="h6 mb-3">@L("favorites") (@Model.Favorites.Count)</h2>
+        @if (Model.Favorites.Any())
+        {
+            <div class="table-responsive">
+                <table class="table admin-table mb-0">
+                    <thead><tr><th>ID</th><th>@Li("col.emailName")</th><th></th></tr></thead>
+                    <tbody>
+                        @foreach (var o in Model.Favorites.Take(20))
+                        {
+                            <tr>
+                                <td>@o.Id</td>
+                                <td>@ObjName(o)</td>
+                                <td class="text-end"><a href="/Object/Detail?slug=@o.Slug" class="btn btn-sm btn-outline-secondary btn-icon" target="_blank"><i class="bi bi-box-arrow-up-right"></i></a></td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+        else { <div class="text-muted">@L("empty")</div> }
+    </div>
+</div>
+
+<div class="admin-card mb-3">
+    <div class="admin-card-body">
+        <h2 class="h6 mb-3">@L("comments") (@Model.Comments.Count)</h2>
+        @if (Model.Comments.Any())
+        {
+            <div class="table-responsive">
+                <table class="table admin-table mb-0">
+                    <thead><tr><th>@Li("col.registered")</th><th>Object</th><th>Text</th><th>Status</th></tr></thead>
+                    <tbody>
+                        @foreach (var item in Model.Comments.Take(20))
+                        {
+                            <tr>
+                                <td style="font-size:.8rem;">@item.Comment.CreatedAt.ToLocalTime().ToString("dd.MM.yyyy")</td>
+                                <td>@ObjName(item.Object)</td>
+                                <td style="max-width:320px;">@item.Comment.Body</td>
+                                <td><span class="badge bg-light text-dark border">@item.Comment.Status</span></td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+        else { <div class="text-muted">@L("empty")</div> }
+    </div>
+</div>
+
+<div class="admin-card mb-3">
+    <div class="admin-card-body">
+        <h2 class="h6 mb-3">@L("routes") (@Model.Routes.Count)</h2>
+        @if (Model.Routes.Any())
+        {
+            <div class="table-responsive">
+                <table class="table admin-table mb-0">
+                    <thead><tr><th>Title</th><th>Stops</th><th>Public</th><th>Updated</th></tr></thead>
+                    <tbody>
+                        @foreach (var r in Model.Routes.Take(20))
+                        {
+                            <tr>
+                                <td>@r.Title</td>
+                                <td>@(r.Stops?.Count ?? 0)</td>
+                                <td>@(r.IsPublic ? "✓" : "—")</td>
+                                <td style="font-size:.8rem;">@r.UpdatedAt.ToLocalTime().ToString("dd.MM.yyyy")</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+        else { <div class="text-muted">@L("empty")</div> }
+    </div>
+</div>
+
+<div class="row g-3">
+    <div class="col-lg-6">
+        <div class="admin-card h-100">
+            <div class="admin-card-body">
+                <h2 class="h6 mb-3">@L("ratings") (@Model.Ratings.Count)</h2>
+                @if (Model.Ratings.Any())
+                {
+                    <ul class="list-unstyled mb-0" style="font-size:.875rem;">
+                        @foreach (var item in Model.Ratings.Take(15))
+                        {
+                            <li class="mb-2">
+                                <strong>@ObjName(item.Object)</strong>
+                                <span class="text-muted"> — @item.Rating.Value/5</span>
+                            </li>
+                        }
+                    </ul>
+                }
+                else { <div class="text-muted">@L("empty")</div> }
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-6">
+        <div class="admin-card h-100">
+            <div class="admin-card-body">
+                <h2 class="h6 mb-3">@L("quizzes") (@Model.QuizResults.Count)</h2>
+                @if (Model.QuizResults.Any())
+                {
+                    <ul class="list-unstyled mb-0" style="font-size:.875rem;">
+                        @foreach (var q in Model.QuizResults.Take(15))
+                        {
+                            var quizTitle = lang == "en" ? q.Quiz?.TitleEn : lang == "be" ? q.Quiz?.TitleBe : q.Quiz?.TitleRu;
+                            <li class="mb-2">
+                                <strong>@(quizTitle ?? $"Quiz #{q.QuizId}")</strong>
+                                <span class="text-muted"> — @q.Score/@q.TotalCount</span>
+                            </li>
+                        }
+                    </ul>
+                }
+                else { <div class="text-muted">@L("empty")</div> }
+            </div>
+        </div>
+    </div>
+</div>

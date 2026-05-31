@@ -190,7 +190,7 @@
             <form method="get" action="@Url.RouteUrl("SearchPretty")">
                 <div class="input-group">
                     <input type="text" name="q" class="form-control" value="@q"
-                           placeholder="@BelarusHeritage.Localization.UiText.T(Context, "search.placeholder")">
+                           placeholder="@BelarusHeritage.Localization.UiText.T(Context, "search.placeholder")" autocomplete="off" spellcheck="false">
                     <input type="hidden" name="category" value="@activeCategory">
                     <input type="hidden" name="region" value="@activeRegion">
                     <button class="btn btn-search" type="submit">

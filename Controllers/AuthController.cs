@@ -1,5 +1,6 @@
-using Microsoft.AspNetCore.Mvc;
+using BelarusHeritage.Localization;
 using BelarusHeritage.Services;
+using Microsoft.AspNetCore.Mvc;
 
 namespace BelarusHeritage.Controllers;
 
@@ -24,11 +25,17 @@ public class AuthController : Controller
     [HttpPost]
     public async Task<IActionResult> Login(string email, string password, bool rememberMe, string? returnUrl)
     {
-        var token = await _authService.LoginAsync(email, password, rememberMe);
+        var (status, token) = await _authService.LoginAsync(email, password, rememberMe);
 
-        if (string.IsNullOrEmpty(token))
+        if (status != LoginStatus.Success || string.IsNullOrEmpty(token))
         {
-            ModelState.AddModelError("", "Invalid email or password");
+            var messageKey = status switch
+            {
+                LoginStatus.AccountDisabled => "auth.error.accountDisabled",
+                LoginStatus.LockedOut => "auth.error.accountLocked",
+                _ => "auth.error.invalidCredentials"
+            };
+            ModelState.AddModelError("", T(messageKey));
             ViewBag.ReturnUrl = returnUrl;
             return View();
         }
@@ -60,7 +67,7 @@ public class AuthController : Controller
     {
         if (password != confirmPassword)
         {
-            ModelState.AddModelError("", "Passwords do not match");
+            ModelState.AddModelError("", T("auth.error.passwordMismatch"));
             return View();
         }
 
@@ -69,11 +76,11 @@ public class AuthController : Controller
         if (user == null)
         {
             foreach (var error in errors)
-                ModelState.AddModelError("", error);
+                ModelState.AddModelError("", MapRegisterError(error));
             return View();
         }
 
-        TempData["SuccessMessage"] = "Registration successful! Please check your email to verify your account.";
+        TempData["SuccessMessage"] = T("auth.success.register");
         return RedirectToAction(nameof(Login));
     }
 
@@ -81,14 +88,8 @@ public class AuthController : Controller
     {
         var result = await _authService.VerifyEmailAsync(token);
 
-        if (result)
-        {
-            TempData["SuccessMessage"] = "Email verified successfully! You can now log in.";
-        }
-        else
-        {
-            TempData["ErrorMessage"] = "Invalid or expired verification token.";
-        }
+        TempData[result ? "SuccessMessage" : "ErrorMessage"] =
+            T(result ? "auth.success.emailVerified" : "auth.error.invalidToken");
 
         return RedirectToAction(nameof(Login));
     }
@@ -103,7 +104,7 @@ public class AuthController : Controller
     {
         await _authService.GeneratePasswordResetTokenAsync(email);
 
-        TempData["SuccessMessage"] = "If an account with that email exists, a password reset link has been sent.";
+        TempData["SuccessMessage"] = T("auth.success.forgotPassword");
         return RedirectToAction(nameof(Login));
     }
 
@@ -118,7 +119,8 @@ public class AuthController : Controller
     {
         if (password != confirmPassword)
         {
-            ModelState.AddModelError("", "Passwords do not match");
+            ModelState.AddModelError("", T("auth.error.passwordMismatch"));
+            ViewBag.Token = token;
             return View();
         }
 
@@ -126,11 +128,12 @@ public class AuthController : Controller
 
         if (result)
         {
-            TempData["SuccessMessage"] = "Password reset successful! You can now log in.";
+            TempData["SuccessMessage"] = T("auth.success.passwordReset");
             return RedirectToAction(nameof(Login));
         }
 
-        ModelState.AddModelError("", "Invalid or expired reset token.");
+        ModelState.AddModelError("", T("auth.error.invalidToken"));
+        ViewBag.Token = token;
         return View();
     }
 
@@ -139,4 +142,13 @@ public class AuthController : Controller
         Response.Cookies.Delete("auth_token");
         return RedirectToAction("Index", "Home");
     }
+
+    private string T(string key) => UiText.T(HttpContext, key);
+
+    private string MapRegisterError(string code) => code switch
+    {
+        "email_exists" => T("auth.error.emailExists"),
+        "username_exists" => T("auth.error.usernameExists"),
+        _ => T("auth.error.registerFailed")
+    };
 }
