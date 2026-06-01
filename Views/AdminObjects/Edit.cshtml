@@ -59,8 +59,15 @@
     </a>
 </div>
 
+@if (TempData["Success"] != null)
+{
+    <div class="alert alert-success py-2">@TempData["Success"]</div>
+}
+
 <form asp-action="Edit" method="post" id="objectForm">
     <input asp-for="Id" type="hidden">
+    <div asp-validation-summary="All" class="alert alert-danger py-2" role="alert"></div>
+    <p class="text-muted mb-3" style="font-size:.85rem;">@BelarusHeritage.Localization.UiText.T(Context, "admin.objects.validation.formHint")</p>
 
     <div class="admin-card">
         <div class="admin-card-header p-0">
@@ -80,6 +87,7 @@
                     <div class="col-md-4">
                         <label class="form-label">@C("label.nameRu")</label>
                         <input asp-for="NameRu" class="form-control" required>
+                        <span asp-validation-for="NameRu" class="text-danger" style="font-size:.75rem;"></span>
                     </div>
                     <div class="col-md-4">
                         <label class="form-label">@C("label.nameBe")</label>
@@ -92,6 +100,7 @@
                     <div class="col-md-4">
                         <label class="form-label">@C("label.slug")</label>
                         <input asp-for="Slug" class="form-control">
+                        <span asp-validation-for="Slug" class="text-danger" style="font-size:.75rem;"></span>
                         <div class="form-text" style="font-size:.72rem;">@E("hint.slug")</div>
                     </div>
                     <div class="col-md-4">
@@ -102,6 +111,7 @@
                                 <option value="@c.Id">@c.NameRu</option>
                             }
                         </select>
+                        <span asp-validation-for="CategoryId" class="text-danger" style="font-size:.75rem;"></span>
                     </div>
                     <div class="col-md-4">
                         <label class="form-label">@C("label.region")</label>
@@ -111,6 +121,7 @@
                                 <option value="@r.Id">@r.NameRu</option>
                             }
                         </select>
+                        <span asp-validation-for="RegionId" class="text-danger" style="font-size:.75rem;"></span>
                     </div>
                     <div class="col-md-4">
                         <label class="form-label">@C("label.archStyle")</label>

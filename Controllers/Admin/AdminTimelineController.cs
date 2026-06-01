@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using BelarusHeritage.Data;
+using BelarusHeritage.Localization;
 using BelarusHeritage.Models.Domain;
 using BelarusHeritage.Services;
 using Microsoft.EntityFrameworkCore;
@@ -44,14 +45,27 @@ public class AdminTimelineController : Controller
     }
 
     [HttpPost]
+    [ValidateAntiForgeryToken]
     public async Task<IActionResult> Create(TimelineEvent model, IFormFile? imageFile)
     {
+        TimelineEventNormalizer.Normalize(model);
+        ClearTimelineBindingValidation();
+        ValidateTimelineEvent(model);
+
+        if (!ModelState.IsValid)
+        {
+            ViewBag.Objects = await GetPublishedObjectsAsync();
+            return View(model);
+        }
+
         if (imageFile != null && imageFile.Length > 0)
         {
             var result = await _fileService.UploadImageAsync(imageFile, "timeline");
             model.ImageUrl = "/" + result.Url;
         }
+
         await _timelineService.CreateEventAsync(model);
+        TempData["Success"] = T("admin.timeline.validation.created");
         return RedirectToAction(nameof(Index));
     }
 
@@ -70,15 +84,25 @@ public class AdminTimelineController : Controller
     }
 
     [HttpPost]
+    [ValidateAntiForgeryToken]
     public async Task<IActionResult> Edit(TimelineEvent model, IFormFile? imageFile)
     {
+        TimelineEventNormalizer.Normalize(model);
+        ClearTimelineBindingValidation();
+        ValidateTimelineEvent(model);
+
+        if (!ModelState.IsValid)
+            return await TimelineFormErrorAsync(model);
+
         if (imageFile != null && imageFile.Length > 0)
         {
             var result = await _fileService.UploadImageAsync(imageFile, "timeline");
             model.ImageUrl = "/" + result.Url;
         }
+
         await _timelineService.UpdateEventAsync(model);
-        return RedirectToAction(nameof(Index));
+        TempData["Success"] = T("admin.timeline.validation.saved");
+        return RedirectToAction(nameof(Edit), new { id = model.Id });
     }
 
     [HttpPost]
@@ -99,5 +123,43 @@ public class AdminTimelineController : Controller
         }
 
         return Json(new { success = true, isPublished = evt?.IsPublished });
+    }
+
+    private string T(string key) => UiText.T(HttpContext, key);
+
+    private async Task<List<HeritageObject>> GetPublishedObjectsAsync() =>
+        await _context.HeritageObjects
+            .Where(o => o.Status == ObjectStatus.Published && !o.IsDeleted)
+            .OrderBy(o => o.NameRu)
+            .ToListAsync();
+
+    private void ClearTimelineBindingValidation()
+    {
+        ModelState.Remove(nameof(TimelineEvent.TitleBe));
+        ModelState.Remove(nameof(TimelineEvent.TitleEn));
+    }
+
+    private void ValidateTimelineEvent(TimelineEvent model)
+    {
+        if (string.IsNullOrWhiteSpace(model.TitleRu))
+            ModelState.AddModelError(nameof(TimelineEvent.TitleRu), T("admin.timeline.validation.titleRuRequired"));
+    }
+
+    private async Task<IActionResult> TimelineFormErrorAsync(TimelineEvent posted)
+    {
+        ViewBag.Objects = await GetPublishedObjectsAsync();
+
+        if (posted.Id == 0)
+            return View("Create", posted);
+
+        var existing = await _timelineService.GetEventAsync(posted.Id);
+        if (existing == null)
+            return NotFound();
+
+        TimelineEventNormalizer.ApplyPosted(existing, posted);
+        if (!string.IsNullOrWhiteSpace(posted.ImageUrl))
+            existing.ImageUrl = posted.ImageUrl;
+
+        return View("Edit", existing);
     }
 }

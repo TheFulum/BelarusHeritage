@@ -178,10 +178,11 @@ public class ObjectService
 
     public async Task<HeritageObject> CreateObjectAsync(HeritageObject obj, int createdByUserId)
     {
+        HeritageObjectNormalizer.Normalize(obj);
+
         var postedLocation = obj.Location;
         obj.Location = null;
 
-        obj.Slug = GenerateSlug(obj.NameRu);
         obj.CreatedBy = createdByUserId;
         obj.UpdatedBy = createdByUserId;
         obj.CreatedAt = DateTime.UtcNow;
@@ -192,6 +193,7 @@ public class ObjectService
 
         if (postedLocation != null && HasUsableCoordinates(postedLocation))
         {
+            HeritageObjectNormalizer.NormalizeLocation(postedLocation);
             _context.ObjectLocations.Add(new ObjectLocation
             {
                 ObjectId = obj.Id,
@@ -217,15 +219,14 @@ public class ObjectService
         if (existing == null)
             throw new InvalidOperationException($"HeritageObject {obj.Id} not found");
 
-        // Copy scalar fields from the posted model (skips navigation properties)
-        _context.Entry(existing).CurrentValues.SetValues(obj);
+        HeritageObjectNormalizer.Normalize(obj);
+        HeritageObjectNormalizer.ApplyPosted(existing, obj);
         existing.UpdatedBy = updatedByUserId;
         existing.UpdatedAt = DateTime.UtcNow;
 
-        // Handle 1:1 Location: update if exists, create if not — never let EF
-        // try to INSERT a duplicate row for the same ObjectId.
         if (obj.Location != null && HasUsableCoordinates(obj.Location))
         {
+            HeritageObjectNormalizer.NormalizeLocation(obj.Location);
             if (existing.Location == null)
             {
                 existing.Location = new ObjectLocation
@@ -285,28 +286,4 @@ public class ObjectService
         }
     }
 
-    private static string GenerateSlug(string name)
-    {
-        var slug = name.ToLowerInvariant()
-            .Replace(" ", "-")
-            .Replace("'", "")
-            .Replace("\"", "")
-            .Replace("?", "")
-            .Replace("!", "");
-
-        // Replace Cyrillic with Latin (basic)
-        slug = slug.Replace("а", "a").Replace("б", "b").Replace("в", "v")
-            .Replace("г", "g").Replace("д", "d").Replace("е", "e")
-            .Replace("ё", "yo").Replace("ж", "zh").Replace("з", "z")
-            .Replace("и", "i").Replace("й", "y").Replace("к", "k")
-            .Replace("л", "l").Replace("м", "m").Replace("н", "n")
-            .Replace("о", "o").Replace("п", "p").Replace("р", "r")
-            .Replace("с", "s").Replace("т", "t").Replace("у", "u")
-            .Replace("ф", "f").Replace("х", "kh").Replace("ц", "ts")
-            .Replace("ч", "ch").Replace("ш", "sh").Replace("щ", "sch")
-            .Replace("ъ", "").Replace("ы", "y").Replace("ь", "")
-            .Replace("э", "e").Replace("ю", "yu").Replace("я", "ya");
-
-        return slug;
-    }
 }

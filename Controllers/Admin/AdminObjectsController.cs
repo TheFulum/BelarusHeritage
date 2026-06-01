@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using BelarusHeritage.Data;
+using BelarusHeritage.Localization;
 using BelarusHeritage.Models.ViewModels;
 using BelarusHeritage.Models.Domain;
 using BelarusHeritage.Services;
@@ -83,9 +84,20 @@ public class AdminObjectsController : Controller
     }
 
     [HttpPost]
+    [ValidateAntiForgeryToken]
     public async Task<IActionResult> Create(HeritageObject model, List<int>? selectedTags, List<IFormFile>? imageFiles)
     {
         ApplyLocationFromForm(model);
+        HeritageObjectNormalizer.Normalize(model);
+        ClearObjectBindingValidation();
+        ValidateObject(model);
+
+        if (!ModelState.IsValid)
+        {
+            await LoadObjectFormLookupsAsync();
+            return View(model);
+        }
+
         var userId = int.Parse(User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)!.Value);
 
         await _objectService.CreateObjectAsync(model, userId);
@@ -134,6 +146,7 @@ public class AdminObjectsController : Controller
             await _context.SaveChangesAsync();
         }
 
+        TempData["Success"] = T("admin.objects.validation.created");
         return RedirectToAction(nameof(Edit), new { id = model.Id });
     }
 
@@ -157,9 +170,17 @@ public class AdminObjectsController : Controller
     }
 
     [HttpPost]
+    [ValidateAntiForgeryToken]
     public async Task<IActionResult> Edit(HeritageObject model, List<int>? selectedTags)
     {
         ApplyLocationFromForm(model);
+        HeritageObjectNormalizer.Normalize(model);
+        ClearObjectBindingValidation();
+        ValidateObject(model);
+
+        if (!ModelState.IsValid)
+            return await ObjectFormErrorAsync(model);
+
         var userId = int.Parse(User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)!.Value);
 
         await _objectService.UpdateObjectAsync(model, userId);
@@ -182,7 +203,8 @@ public class AdminObjectsController : Controller
 
         await _context.SaveChangesAsync();
 
-        return RedirectToAction(nameof(Index));
+        TempData["Success"] = T("admin.objects.validation.saved");
+        return RedirectToAction(nameof(Edit), new { id = model.Id });
     }
 
     [HttpPost]
@@ -312,6 +334,64 @@ public class AdminObjectsController : Controller
         return Json(new { success = true });
     }
 
+    private string T(string key) => UiText.T(HttpContext, key);
+
+    private async Task LoadObjectFormLookupsAsync(int? objectId = null)
+    {
+        ViewBag.Regions = await _context.Regions.ToListAsync();
+        ViewBag.Categories = await _context.Categories.ToListAsync();
+        ViewBag.ArchStyles = await _context.ArchStyles.ToListAsync();
+        ViewBag.Tags = await _context.Tags.ToListAsync();
+        if (objectId.HasValue)
+            ViewBag.Images = await _context.ObjectImages.Where(i => i.ObjectId == objectId.Value).OrderBy(i => i.SortOrder).ToListAsync();
+    }
+
+    private void ClearObjectBindingValidation()
+    {
+        ModelState.Remove(nameof(HeritageObject.NameBe));
+        ModelState.Remove(nameof(HeritageObject.NameEn));
+        ModelState.Remove(nameof(HeritageObject.Slug));
+    }
+
+    private void ValidateObject(HeritageObject model)
+    {
+        if (string.IsNullOrWhiteSpace(model.NameRu))
+            ModelState.AddModelError(nameof(HeritageObject.NameRu), T("admin.objects.validation.nameRuRequired"));
+
+        if (string.IsNullOrWhiteSpace(model.Slug))
+            ModelState.AddModelError(nameof(HeritageObject.Slug), T("admin.objects.validation.slugRequired"));
+
+        if (model.CategoryId <= 0)
+            ModelState.AddModelError(nameof(HeritageObject.CategoryId), T("admin.objects.validation.categoryRequired"));
+
+        if (model.RegionId <= 0)
+            ModelState.AddModelError(nameof(HeritageObject.RegionId), T("admin.objects.validation.regionRequired"));
+    }
+
+    private async Task<IActionResult> ObjectFormErrorAsync(HeritageObject posted)
+    {
+        if (posted.Id == 0)
+        {
+            await LoadObjectFormLookupsAsync();
+            return View("Create", posted);
+        }
+
+        var existing = await _context.HeritageObjects
+            .Include(o => o.TagMaps)
+            .Include(o => o.Location)
+            .FirstOrDefaultAsync(o => o.Id == posted.Id);
+
+        if (existing == null)
+            return NotFound();
+
+        HeritageObjectNormalizer.ApplyPosted(existing, posted);
+        if (posted.Location != null)
+            existing.Location = posted.Location;
+
+        await LoadObjectFormLookupsAsync(posted.Id);
+        return View("Edit", existing);
+    }
+
     private void ApplyLocationFromForm(HeritageObject model)
     {
         // Parse map coordinates explicitly to avoid culture-dependent decimal binding issues.
@@ -339,6 +419,7 @@ public class AdminObjectsController : Controller
         model.Location.AddressEn = (Request.Form["Location.AddressEn"].FirstOrDefault() ?? string.Empty).Trim();
         if (model.Location.MapZoom == 0)
             model.Location.MapZoom = 15;
+        HeritageObjectNormalizer.NormalizeLocation(model.Location);
     }
 
     private static bool TryParseDecimalFlexible(string raw, out decimal value)

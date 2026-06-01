@@ -68,6 +68,7 @@ public class TimelineService
 
     public async Task<TimelineEvent> CreateEventAsync(TimelineEvent evt)
     {
+        TimelineEventNormalizer.Normalize(evt);
         _context.TimelineEvents.Add(evt);
         await _context.SaveChangesAsync();
         return evt;
@@ -75,9 +76,14 @@ public class TimelineService
 
     public async Task<TimelineEvent> UpdateEventAsync(TimelineEvent evt)
     {
-        _context.TimelineEvents.Update(evt);
+        var existing = await _context.TimelineEvents.FindAsync(evt.Id);
+        if (existing == null)
+            throw new InvalidOperationException($"TimelineEvent {evt.Id} not found");
+
+        TimelineEventNormalizer.ApplyPosted(existing, evt);
+        TimelineEventNormalizer.Normalize(existing);
         await _context.SaveChangesAsync();
-        return evt;
+        return existing;
     }
 
     public async Task DeleteEventAsync(int eventId)

@@ -15,11 +15,9 @@ public class HeritageObject
     [MaxLength(255)]
     public string NameRu { get; set; } = string.Empty;
 
-    [Required]
     [MaxLength(255)]
     public string NameBe { get; set; } = string.Empty;
 
-    [Required]
     [MaxLength(255)]
     public string NameEn { get; set; } = string.Empty;
 
