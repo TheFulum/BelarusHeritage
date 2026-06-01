@@ -16,11 +16,9 @@ public class TimelineEvent
     [MaxLength(300)]
     public string TitleRu { get; set; } = string.Empty;
 
-    [Required]
     [MaxLength(300)]
     public string TitleBe { get; set; } = string.Empty;
 
-    [Required]
     [MaxLength(300)]
     public string TitleEn { get; set; } = string.Empty;
 

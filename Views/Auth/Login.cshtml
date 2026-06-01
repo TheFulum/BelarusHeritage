@@ -47,10 +47,13 @@
                         </button>
 
                         <div class="auth-links">
-                            <a href="@Url.Action("ForgotPassword", "Auth")" class="auth-link">
-                                @Localize("forgotPassword")
-                            </a>
-                            <span class="auth-divider">·</span>
+                            @if (FeatureFlags.PasswordRecovery)
+                            {
+                                <a href="@Url.Action("ForgotPassword", "Auth")" class="auth-link">
+                                    @Localize("forgotPassword")
+                                </a>
+                                <span class="auth-divider">·</span>
+                            }
                             <a href="@Url.Action("Register", "Auth")" class="auth-link">
                                 @Localize("noAccount")
                             </a>

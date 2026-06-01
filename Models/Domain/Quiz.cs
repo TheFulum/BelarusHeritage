@@ -16,11 +16,9 @@ public class Quiz
     [MaxLength(200)]
     public string TitleRu { get; set; } = string.Empty;
 
-    [Required]
     [MaxLength(200)]
     public string TitleBe { get; set; } = string.Empty;
 
-    [Required]
     [MaxLength(200)]
     public string TitleEn { get; set; } = string.Empty;
 

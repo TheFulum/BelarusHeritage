@@ -57,6 +57,8 @@
 </div>
 
 <form asp-action="Create" method="post" enctype="multipart/form-data" id="objectForm">
+    <div asp-validation-summary="All" class="alert alert-danger py-2" role="alert"></div>
+    <p class="text-muted mb-3" style="font-size:.85rem;">@BelarusHeritage.Localization.UiText.T(Context, "admin.objects.validation.formHint")</p>
     <!-- Tabs -->
     <div class="admin-card">
         <div class="admin-card-header p-0">
@@ -76,6 +78,7 @@
                     <div class="col-md-4">
                         <label class="form-label">@L("label.nameRu")</label>
                         <input asp-for="NameRu" class="form-control" placeholder="@BelarusHeritage.Localization.UiText.T(Context, "admin.objects.create.ph.nameRu")" required>
+                        <span asp-validation-for="NameRu" class="text-danger" style="font-size:.75rem;"></span>
                     </div>
                     <div class="col-md-4">
                         <label class="form-label">@L("label.nameBe")</label>
@@ -88,27 +91,30 @@
                     <div class="col-md-4">
                         <label class="form-label">@L("label.slug")</label>
                         <input asp-for="Slug" class="form-control" placeholder="mir-castle" id="slugInput">
+                        <span asp-validation-for="Slug" class="text-danger" style="font-size:.75rem;"></span>
                         <div class="form-text" style="font-size:.72rem;">@L("hint.slug")</div>
                     </div>
                     <div class="col-md-4">
                         <label class="form-label">@L("label.category")</label>
                         <select asp-for="CategoryId" class="form-select" required>
-                            <option value="">@L("opt.choose")</option>
+                            <option value="0">@L("opt.choose")</option>
                             @foreach (var c in categories)
                             {
                                 <option value="@c.Id">@c.NameRu</option>
                             }
                         </select>
+                        <span asp-validation-for="CategoryId" class="text-danger" style="font-size:.75rem;"></span>
                     </div>
                     <div class="col-md-4">
                         <label class="form-label">@L("label.region")</label>
                         <select asp-for="RegionId" class="form-select" required>
-                            <option value="">@L("opt.choose")</option>
+                            <option value="0">@L("opt.choose")</option>
                             @foreach (var r in regions)
                             {
                                 <option value="@r.Id">@r.NameRu</option>
                             }
                         </select>
+                        <span asp-validation-for="RegionId" class="text-danger" style="font-size:.75rem;"></span>
                     </div>
 
                     <div class="col-md-4">

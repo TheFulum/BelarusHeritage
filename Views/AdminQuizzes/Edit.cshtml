@@ -47,9 +47,16 @@
     </div>
 }
 
+@if (TempData["Success"] != null)
+{
+    <div class="alert alert-success py-2">@TempData["Success"]</div>
+}
+
 <!-- Basic info -->
 <form asp-action="SaveQuiz" method="post" id="quizMetaForm">
     <input asp-for="Id" type="hidden">
+    <div asp-validation-summary="All" class="alert alert-danger py-2" role="alert"></div>
+    <p class="text-muted mb-3" style="font-size:.85rem;">@BelarusHeritage.Localization.UiText.T(Context, "admin.quizzes.validation.formHint")</p>
     <div class="admin-card mb-3">
         <div class="admin-card-header d-flex align-items-center gap-2">
             <i class="bi bi-info-circle"></i>
@@ -59,7 +66,8 @@
             <div class="row g-3">
                 <div class="col-md-3">
                     <label class="form-label" style="font-size:.8rem; font-weight:600;">@L("label.slugReq")</label>
-                    <input asp-for="Slug" class="form-control" required>
+                    <input asp-for="Slug" class="form-control">
+                    <span asp-validation-for="Slug" class="text-danger" style="font-size:.75rem;"></span>
                 </div>
                 <div class="col-md-3">
                     <label class="form-label" style="font-size:.8rem; font-weight:600;">@L("label.type")</label>
@@ -82,14 +90,17 @@
                 <div class="col-md-4">
                     <label class="form-label" style="font-size:.8rem; font-weight:600;">@L("label.nameRuReq")</label>
                     <input asp-for="TitleRu" class="form-control" required>
+                    <span asp-validation-for="TitleRu" class="text-danger" style="font-size:.75rem;"></span>
                 </div>
                 <div class="col-md-4">
                     <label class="form-label" style="font-size:.8rem; font-weight:600;">@L("label.nameBe")</label>
                     <input asp-for="TitleBe" class="form-control">
+                    <span asp-validation-for="TitleBe" class="text-danger" style="font-size:.75rem;"></span>
                 </div>
                 <div class="col-md-4">
                     <label class="form-label" style="font-size:.8rem; font-weight:600;">@L("label.nameEn")</label>
                     <input asp-for="TitleEn" class="form-control">
+                    <span asp-validation-for="TitleEn" class="text-danger" style="font-size:.75rem;"></span>
                 </div>
                 <div class="col-md-6">
                     <label class="form-label" style="font-size:.8rem; font-weight:600;">@BelarusHeritage.Localization.UiText.T(Context, "admin.timeline.form.descRu")</label>
@@ -321,7 +332,7 @@ async function saveQuestion(id, btn) {
     });
     const json = await res.json();
     if (json.success) showToast(i18nQuizEdit.saveQuestionOk, 'success');
-    else showToast(i18nQuizEdit.saveError, 'danger');
+    else showToast(json.message || i18nQuizEdit.saveError, 'danger');
 }
 
 async function uploadQuestionImage(questionId, input) {
@@ -411,7 +422,7 @@ async function saveAnswer(id, btn) {
     });
     const json = await res.json();
     if (json.success) showToast(i18nQuizEdit.saveAnswerOk, 'success');
-    else showToast(i18nQuizEdit.saveError, 'danger');
+    else showToast(json.message || i18nQuizEdit.saveError, 'danger');
 }
 
 async function deleteAnswer(id, btn) {

@@ -18,8 +18,15 @@
     </div>
 </div>
 
+@if (TempData["Success"] != null)
+{
+    <div class="alert alert-success py-2">@TempData["Success"]</div>
+}
+
 <form asp-action="Edit" method="post" enctype="multipart/form-data">
     <input asp-for="Id" type="hidden">
+    <div asp-validation-summary="All" class="alert alert-danger py-2" role="alert"></div>
+    <p class="text-muted mb-3" style="font-size:.85rem;">@BelarusHeritage.Localization.UiText.T(Context, "admin.timeline.validation.formHint")</p>
     <div class="admin-card">
         <div class="admin-card-body">
             <div class="row g-3">
@@ -30,6 +37,7 @@
                 <div class="col-md-3">
                     <label class="form-label" style="font-size:.8rem; font-weight:600;">@F("titleRuReq")</label>
                     <input asp-for="TitleRu" class="form-control" required>
+                    <span asp-validation-for="TitleRu" class="text-danger" style="font-size:.75rem;"></span>
                 </div>
                 <div class="col-md-3">
                     <label class="form-label" style="font-size:.8rem; font-weight:600;">@F("titleBe")</label>
