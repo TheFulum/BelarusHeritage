@@ -265,6 +265,17 @@
 
         /* Alerts */
         .admin-alert { border-radius: 8px; border: none; font-size: .875rem; }
+        .validation-summary-valid { display: none; }
+        .validation-summary-errors {
+            color: #842029;
+            background-color: #f8d7da;
+            border: 1px solid #f5c2c7;
+            border-radius: 8px;
+            padding: 0.5rem 1rem;
+            margin-bottom: 1rem;
+            font-size: .875rem;
+        }
+        .validation-summary-errors ul { margin-bottom: 0; padding-left: 1.1rem; }
     </style>
 
     @await RenderSectionAsync("Styles", required: false)

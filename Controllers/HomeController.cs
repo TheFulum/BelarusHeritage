@@ -50,7 +50,7 @@ public class HomeController : Controller
                 })
                 .ToListAsync(),
             TodayInHistory = await _timelineService.GetTodayInHistoryAsync(),
-            TimelinePreview = await _timelineService.GetUpcomingEventsAsync(6),
+            TimelinePreview = await _timelineService.GetUpcomingEventsAsync(3),
             Quizzes = await _quizService.GetActiveQuizzesAsync(),
             PublicRoutes = await _routeService.GetPublicRoutesAsync(3)
         };

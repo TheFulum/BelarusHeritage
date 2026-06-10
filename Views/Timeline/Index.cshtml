@@ -275,9 +275,12 @@
                         @if (isLeft)
                         {
                             <div class="tl-card">
-                                @if (!string.IsNullOrEmpty(evt.ImageUrl))
+                                @{
+                                    var tlImgLeft = HeritageImageResolver.ResolveTimelineEventImage(evt);
+                                }
+                                @if (!string.IsNullOrWhiteSpace(tlImgLeft))
                                 {
-                                    <img src="@evt.ImageUrl" class="tl-card-img" alt="@TitleOf(evt)" loading="lazy">
+                                    <img src="@tlImgLeft" class="tl-card-img" alt="@TitleOf(evt)" loading="lazy">
                                 }
                                 <div class="tl-card-body">
                                     <div class="tl-card-title">@TitleOf(evt)</div>
@@ -301,9 +304,12 @@
                             <div class="tl-empty"></div>
                             <div class="tl-dot"></div>
                             <div class="tl-card">
-                                @if (!string.IsNullOrEmpty(evt.ImageUrl))
+                                @{
+                                    var tlImgRight = HeritageImageResolver.ResolveTimelineEventImage(evt);
+                                }
+                                @if (!string.IsNullOrWhiteSpace(tlImgRight))
                                 {
-                                    <img src="@evt.ImageUrl" class="tl-card-img" alt="@TitleOf(evt)" loading="lazy">
+                                    <img src="@tlImgRight" class="tl-card-img" alt="@TitleOf(evt)" loading="lazy">
                                 }
                                 <div class="tl-card-body">
                                     <div class="tl-card-title">@TitleOf(evt)</div>

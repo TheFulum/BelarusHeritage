@@ -4,9 +4,7 @@
     var name = lang == "en" ? Model.NameEn : lang == "be" ? Model.NameBe : Model.NameRu;
     var regionName = Model.Region == null ? "" :
         (lang == "en" ? Model.Region.NameEn : lang == "be" ? Model.Region.NameBe : Model.Region.NameRu);
-    var thumb = Model.Images?.FirstOrDefault(i => i.IsMain)?.ThumbUrl
-                ?? Model.Images?.FirstOrDefault(i => i.IsMain)?.Url
-                ?? Model.MainImageUrl;
+    var thumb = HeritageImageResolver.ResolveObjectImage(Model);
 }
 
 <a href="@Url.Action("Detail", "Object", new { slug = Model.Slug })" class="related-card">
