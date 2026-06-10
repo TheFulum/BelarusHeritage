@@ -17,6 +17,7 @@ public class TimelineService
     {
         return await _context.TimelineEvents
             .Include(e => e.Object)
+            .ThenInclude(o => o!.Images)
             .Where(e => e.IsPublished)
             .OrderBy(e => e.Year)
             .ThenBy(e => e.SortOrder)
@@ -45,21 +46,22 @@ public class TimelineService
         // For now, just return recent events
         return await _context.TimelineEvents
             .Include(e => e.Object)
-            .ThenInclude(o => o!.Images.Where(i => i.IsMain))
+            .ThenInclude(o => o!.Images)
             .Where(e => e.IsPublished)
             .OrderByDescending(e => e.Year)
             .Take(3)
             .ToListAsync();
     }
 
-    public async Task<List<TimelineEvent>> GetUpcomingEventsAsync(int count = 10)
+    public async Task<List<TimelineEvent>> GetUpcomingEventsAsync(int count = 3)
     {
         var currentYear = (short)DateTime.UtcNow.Year;
+        var minYear = (short)(currentYear - 120);
 
         return await _context.TimelineEvents
             .Include(e => e.Object)
-            .ThenInclude(o => o!.Images.Where(i => i.IsMain))
-            .Where(e => e.IsPublished && e.Year >= currentYear - 100 && e.Year <= currentYear + 50)
+            .ThenInclude(o => o!.Images)
+            .Where(e => e.IsPublished && e.Year >= minYear && e.Year <= currentYear + 50)
             .OrderBy(e => e.Year)
             .ThenBy(e => e.SortOrder)
             .Take(count)

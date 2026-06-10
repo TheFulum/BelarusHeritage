@@ -633,6 +633,49 @@ WHERE TABLE_SCHEMA = DATABASE()
                 db.TimelineEvents.Add(e);
         }
         await db.SaveChangesAsync();
+        await LinkTimelineEventsToObjectsAsync(db);
+    }
+
+    private static async Task LinkTimelineEventsToObjectsAsync(AppDbContext db)
+    {
+        var objectIdsBySlug = await db.HeritageObjects
+            .AsNoTracking()
+            .ToDictionaryAsync(o => o.Slug, o => o.Id);
+
+        var titleToSlug = new (string TitlePart, string Slug)[]
+        {
+            ("Мирский замок", "mirski-zamak"),
+            ("Несвижского замка", "niasvizh-zamak"),
+            ("Несвижский замок", "niasvizh-zamak"),
+            ("Лидского замка", "lida-zamak"),
+            ("Софийского собора", "polacki-safijski-sabor"),
+            ("Симеона и Елены", "kasciol-sviatych-symona-i-aleny"),
+            ("Румянцевых", "homelski-palac-rumiancavych-paskievicau"),
+        };
+
+        var events = await db.TimelineEvents
+            .Where(e => e.ObjectId == null)
+            .ToListAsync();
+
+        var linked = false;
+        foreach (var evt in events)
+        {
+            foreach (var (titlePart, slug) in titleToSlug)
+            {
+                if (!evt.TitleRu.Contains(titlePart, StringComparison.Ordinal))
+                    continue;
+
+                if (objectIdsBySlug.TryGetValue(slug, out var objectId))
+                {
+                    evt.ObjectId = objectId;
+                    linked = true;
+                }
+                break;
+            }
+        }
+
+        if (linked)
+            await db.SaveChangesAsync();
     }
 
     private static async Task SeedQuizzesAsync(AppDbContext db)

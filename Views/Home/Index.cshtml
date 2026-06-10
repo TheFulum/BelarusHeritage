@@ -143,16 +143,13 @@
                 {
                     var evtTitle = lang == "ru" ? evt.TitleRu : lang == "be" ? evt.TitleBe : evt.TitleEn;
                     var evtBody = lang == "en" ? (evt.BodyEn ?? "") : (evt.BodyRu ?? "");
-                    var evtImg = evt.ImageUrl
-                        ?? evt.Object?.Images?.FirstOrDefault(i => i.IsMain)?.ThumbUrl
-                        ?? evt.Object?.Images?.FirstOrDefault(i => i.IsMain)?.Url
-                        ?? evt.Object?.MainImageUrl;
+                    var evtImg = HeritageImageResolver.ResolveTimelineEventImage(evt);
                     <div class="col-md-4" data-aos="fade-up">
                         <div class="card h-100 media-card">
                             <div class="media-card-img">
                                 @if (!string.IsNullOrWhiteSpace(evtImg))
                                 {
-                                    <img src="@NormalizeImageUrl(evtImg)" alt="@evtTitle" loading="lazy">
+                                    <img src="@evtImg" alt="@evtTitle" loading="lazy">
                                 }
                                 else
                                 {
@@ -196,16 +193,13 @@
                 {
                     var tlTitle = lang == "ru" ? evt.TitleRu : lang == "be" ? evt.TitleBe : evt.TitleEn;
                     var tlBody = lang == "en" ? (evt.BodyEn ?? "") : (evt.BodyRu ?? "");
-                    var tlImg = evt.ImageUrl
-                        ?? evt.Object?.Images?.FirstOrDefault(i => i.IsMain)?.ThumbUrl
-                        ?? evt.Object?.Images?.FirstOrDefault(i => i.IsMain)?.Url
-                        ?? evt.Object?.MainImageUrl;
+                    var tlImg = HeritageImageResolver.ResolveTimelineEventImage(evt);
                     <div class="col-md-6 col-lg-4" data-aos="fade-up">
                         <div class="card h-100 media-card media-card--compact">
                             <div class="media-card-img">
                                 @if (!string.IsNullOrWhiteSpace(tlImg))
                                 {
-                                    <img src="@NormalizeImageUrl(tlImg)" alt="@tlTitle" loading="lazy">
+                                    <img src="@tlImg" alt="@tlTitle" loading="lazy">
                                 }
                                 else
                                 {
@@ -299,16 +293,14 @@
                         .OrderBy(s => s.SortOrder)
                         .Select(s => s.Object)
                         .Where(o => o != null)
-                        .Select(o => o!.Images?.FirstOrDefault(i => i.IsMain)?.ThumbUrl
-                                     ?? o.Images?.FirstOrDefault(i => i.IsMain)?.Url
-                                     ?? o.MainImageUrl)
+                        .Select(o => HeritageImageResolver.ResolveObjectImage(o))
                         .FirstOrDefault(x => !string.IsNullOrWhiteSpace(x));
                     <div class="col-md-4" data-aos="fade-up">
                         <div class="card route-home-card h-100">
                             <div class="media-card-img">
                                 @if (!string.IsNullOrWhiteSpace(cover))
                                 {
-                                    <img src="@NormalizeImageUrl(cover)" alt="@route.Title" loading="lazy">
+                                    <img src="@cover" alt="@route.Title" loading="lazy">
                                 }
                                 else
                                 {
@@ -835,15 +827,4 @@
         };
     }
 
-    private string NormalizeImageUrl(string? url)
-    {
-        if (string.IsNullOrWhiteSpace(url))
-            return "";
-        url = url.Replace('\\', '/');
-        if (url.StartsWith("http://", StringComparison.OrdinalIgnoreCase) ||
-            url.StartsWith("https://", StringComparison.OrdinalIgnoreCase) ||
-            url.StartsWith("/", StringComparison.Ordinal))
-            return url;
-        return "/" + url;
-    }
 }
