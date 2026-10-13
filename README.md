@@ -1,76 +1,58 @@
 # BelarusHeritage
 
-[Русская версия](README.ru.md)
+Информационный сайт о культурном наследии Беларуси: каталог памятников, интерактивная карта, хронология событий, викторины, конструктор маршрутов и конструктор белорусского орнамента.
 
-Web application about cultural heritage of Belarus with catalog, map, timeline, quizzes, and advanced route builder.
+## О проекте
 
-## Stack
+Сайт объединяет сведения о памятниках архитектуры и истории Беларуси и предлагает несколько способов их изучать: читать карточки объектов, искать их на карте, проходить викторины, следить за событиями на временной шкале и планировать поездки. Весь контент доступен на русском, белорусском и английском языках.
 
-- ASP.NET Core MVC (`.NET 8`)
-- Entity Framework Core + Pomelo MySQL provider
-- ASP.NET Core Identity + JWT (cookie token transport)
-- Leaflet + MapLibre for maps
-- OSRM (road routing + alternatives), Nominatim (geocoding/reverse geocoding)
+Проект включает полноценную панель администратора, через которую наполняется весь контент сайта без правки кода.
 
-## Main Features
+## Возможности
 
-- Heritage objects catalog with multilingual content (`ru`, `be`, `en`)
-- Interactive map and timeline
-- Quiz module
-- Admin area for managing content
-- Unified UI localization via `Localization/UiText.cs` (`UiText.Lang/Is/T`)
-- Admin dashboard language switch (`ru` / `be` / `en`)
-- Route Builder:
-  - private start/end points
-  - road-based route drawing
-  - alternatives by segment with visual selection
-  - route optimization
-  - save personal private copy from public shared route
-- Map page (`/Map`) uses the same map foundation as Route Builder/Share:
-  - Leaflet + MapLibre localized vector style
-  - fallback to OSM raster tiles
+**Для посетителей**
+- **Каталог объектов** с фильтрами по региону, категории, архитектурному стилю и тегам, поиск с автодополнением.
+- **Карточка объекта**: описание, фотогалерея, расположение на карте, источники, связанные объекты, рейтинг и комментарии.
+- **Интерактивная карта** на векторных картах MapLibre с запасным слоем OpenStreetMap.
+- **Хронология**: события истории на временной шкале.
+- **Викторины** с сохранением результатов.
+- **Конструктор маршрутов**: свои точки старта и финиша, построение пути по дорогам, выбор альтернативных вариантов для каждого участка, оптимизация порядка остановок, публичные маршруты и ссылки для отправки.
+- **Конструктор орнамента**: создание собственного белорусского орнамента, сохранение и публикация.
+- **Личный кабинет**: избранное, свои маршруты и орнаменты, комментарии, смена пароля, аватар, удаление аккаунта.
 
-## Requirements
+**Для администратора**
+- Управление объектами, справочниками (регионы, категории, стили, теги), хронологией, викторинами и орнаментами.
+- Модерация комментариев, управление пользователями и ролями.
+- Корзина с восстановлением удалённого контента.
+- Журнал действий администраторов.
+- Настройки сайта и переключение языка панели.
 
-- .NET SDK 8
-- MySQL 8+ (or compatible)
+## Технологии
 
-## Quick Start
+- C#, ASP.NET Core 8 MVC, Razor
+- Entity Framework Core 8, MySQL 8 (32 таблицы)
+- ASP.NET Core Identity и JWT в httpOnly-cookie, разграничение ролей
+- FluentValidation, ImageSharp для обработки изображений
+- Leaflet и MapLibre GL, OSRM для маршрутов по дорогам, Nominatim для геокодинга
+- Bootstrap 5, jQuery, Swiper, Lightgallery, AOS
+- Собственный слой локализации интерфейса (ru, be, en)
 
-1. Clone repository
-2. Configure database connection in `appsettings.json` (or use environment overrides)
-3. Restore and run:
+## Структура
 
-```bash
-dotnet restore
-dotnet run
+```
+Controllers/         публичные страницы: каталог, объект, карта, хронология, викторины, маршруты, орнаменты, профиль
+Controllers/Admin/   разделы панели администратора
+Services/            бизнес-логика: объекты, поиск, маршруты, викторины, рейтинги, журнал действий
+Models/Domain/       сущности базы данных
+Data/                контекст EF Core, начальные данные, SQL-схема
+Localization/        строки интерфейса на трёх языках
+Middleware/          запись действий в журнал
 ```
 
-Application starts on local ASP.NET Core URLs (example: `https://localhost:xxxx` / `http://localhost:xxxx`).
+## Запуск
 
-## Database
+Нужны .NET 8 SDK и MySQL 8. Укажите строку подключения и ключ JWT в `appsettings.json` (вместо `YOUR_DB_PASSWORD` и `CHANGE_ME`) и выполните `dotnet run`. Схема базы создаётся из `Data/Migrations/001_InitialSchema.sql`. При первом запуске добавляются начальные данные и учётная запись администратора, пароль которой задан в `Data/DbSeeder.cs`: его стоит сменить сразу после входа.
 
-- EF Core is configured in `Program.cs` via `UseMySql(...)`.
-- Initial schema SQL is located in `Data/Migrations/001_InitialSchema.sql`.
-- Startup seeding and idempotent schema checks are in `Data/DbSeeder.cs`.
+---
 
-## Configuration Notes
-
-- `appsettings.json` contains runtime settings (site, JWT, mail, etc.).
-- For local machine-specific secrets, prefer separate non-tracked files like:
-  - `appsettings.Development.local.json`
-  - `appsettings.Local.json`
-
-These files are ignored by `.gitignore`.
-
-## Localization
-
-- UI strings are centralized in `Localization/UiText.cs` and used in Razor views via `UiText.T(Context, "key")`.
-- Language is resolved from `culture` cookie and normalized to `ru`, `be`, or `en`.
-- Multilingual content data remains in domain fields (`*_ru`, `*_be`, `*_en`).
-
-## Maps and Routing
-
-- Base map (`/Map`, `/RouteBuilder`, `/RouteBuilder/Share`): MapLibre localized style (with fallback to OSM raster tiles)
-- Road routes and alternatives: `/RouteBuilder/BuildRoadPolyline` and `/RouteBuilder/BuildRoadAlternatives` (proxy endpoints)
-- Geocoding: Nominatim
+Автор — [Липовский Даниил](https://github.com/TheFulum)
